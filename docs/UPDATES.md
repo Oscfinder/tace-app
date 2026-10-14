@@ -1,5 +1,28 @@
 # TACE Platform — Updates Log
 
+## Oct 14, 2026 — Ticket 3A fixes: children count, committee meetings, admin Events and Resources
+
+### New migration to run: `supabase/migrations/007_events_committee_and_counts.sql`
+(Earlier migrations untouched.)
+- **`active_children_count` view** — one column, `total`: the number of beneficiaries with `status = 'active'`. Granted to `authenticated` only (anon/public revoked). Members get a number without any access to the `beneficiaries` table.
+- **`events.committee`** — nullable text (plus an index). `NULL` means a general event.
+- **`resources` bucket** — now limited in storage itself to 5MB and PDF/JPG/PNG, so the rules hold even if a request skips the app's checks.
+
+### 1. Member Home count
+The "Children in our programme" number now reads `active_children_count` instead of `public_beneficiaries`, so it counts every active child, not only photo-consented ones.
+
+### 2. Committee meetings
+"Next committee meeting" (Home and My Committee) now matches `events.committee = member.committee` with `event_type = 'meeting'` and a future date. The title-text matching is gone. Existing events have no committee set, so edit them in the new Events screen and pick the committee, or members won't see them as their committee's meeting.
+
+### 3. Admin screens (Content hub + sidebar entries)
+- **Events** (`/dashboard/admin/content/events`): upcoming and past lists, create, edit and delete (with a confirmation dialog). Fields: title, description, location, date and time, type (meeting/event/training/outreach), committee (optional dropdown of the 9 committees, the same list used for member assignment) and minutes. Validation runs on the server; deleting an event also removes its RSVPs.
+- **Resources** (`/dashboard/admin/content/resources`): upload PDF/JPG/PNG up to 5MB into `resources/{category}/filename.ext`, with the category chosen from Policies, Minutes, Templates, Guides or Other. Type and size are checked in the browser and again on the server; filenames are cleaned (no spaces or path characters); uploading over an existing file is refused rather than overwriting it. The list shows each file with a 1-hour signed download link and a delete that removes the storage file. Admin only. Files already in the bucket outside those five folders still appear.
+- **Server-action body limit:** `next.config.ts` already sets `bodySizeLimit: "6mb"` for Server Actions. That covers a 5MB file plus form overhead, so no change was needed.
+- Sidebar: new Events and Resources items; the Content item no longer also highlights when you are on them.
+
+### Verified
+`tsc`, lint and build pass. Not yet exercised against Supabase: run 007, create a Finance committee meeting in the future and confirm a Finance member sees it as their next meeting; upload a PDF and confirm it appears on the member Resources page; try a file over 5MB and a .docx; delete a file and confirm it disappears from storage.
+
 ## Oct 14, 2026 — Ticket 3D fixes: real programmes and fixed tie-break
 
 - **Programmes:** the six real TACE programmes (Education Support, Vocational Training, Mentorship, Career Discovery, Enterprise Development, Community Outreach) are now defined once as `PROGRAMMES` in `lib/career/clusters.ts`; each cluster's `programme` is typed to that list. Mapping: Builder/Technical → Vocational Training, Creative → Vocational Training, People & Care → Mentorship, Analytical/Academic → Education Support, Business/Enterprise → Enterprise Development. (Community Outreach would also suit People & Care if you prefer; it's a one-word change.)

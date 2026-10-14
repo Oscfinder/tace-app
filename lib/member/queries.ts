@@ -60,10 +60,13 @@ export function firstOfMonth(date = new Date()) {
 
 export async function getBeneficiaryCount(): Promise<number> {
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("public_beneficiaries")
-    .select("id", { count: "exact", head: true });
-  return count ?? 0;
+  // One number from a view that counts every active child — not just the
+  // photo-consented ones that public_beneficiaries exposes.
+  const { data } = await supabase
+    .from("active_children_count")
+    .select("total")
+    .maybeSingle();
+  return data?.total ?? 0;
 }
 
 export async function getMemberCounts() {
@@ -132,8 +135,8 @@ export async function getNextCommitteeMeeting(
     .from("events")
     .select("*")
     .eq("event_type", "meeting")
+    .eq("committee", committee)
     .gte("event_date", new Date().toISOString())
-    .ilike("title", `%${committee}%`)
     .order("event_date", { ascending: true })
     .limit(1)
     .maybeSingle();

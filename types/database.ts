@@ -432,6 +432,7 @@ export type Database = {
           location: string | null;
           event_date: string | null;
           event_type: EventType | null;
+          committee: string | null;
           minutes: string | null;
           created_by: string | null;
           created_at: string;
@@ -568,6 +569,10 @@ export type Database = {
       };
       my_sponsor: {
         Row: { first_name: string };
+        Relationships: [];
+      };
+      active_children_count: {
+        Row: { total: number };
         Relationships: [];
       };
       project_funding: {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, Megaphone, ArrowRight } from "lucide-react";
+import { BookOpen, CalendarDays, FolderOpen, Megaphone, ArrowRight } from "lucide-react";
 
 const SECTIONS = [
   {
@@ -13,6 +13,18 @@ const SECTIONS = [
     icon: Megaphone,
     title: "Announcements",
     description: "Shown on the member dashboard once published.",
+  },
+  {
+    href: "/dashboard/admin/content/events",
+    icon: CalendarDays,
+    title: "Events",
+    description: "Meetings, trainings and outreach, with minutes.",
+  },
+  {
+    href: "/dashboard/admin/content/resources",
+    icon: FolderOpen,
+    title: "Resources",
+    description: "Policies, templates and guides for members.",
   },
 ];
 

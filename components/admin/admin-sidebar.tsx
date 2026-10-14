@@ -14,6 +14,8 @@ import {
   DollarSign,
   Folder,
   BookOpen,
+  CalendarDays,
+  FolderOpen,
   LineChart,
   Settings,
   MessageSquareHeart,
@@ -41,6 +43,8 @@ type NavItem = {
   icon: typeof Home;
   exact?: boolean;
   badge?: number;
+  /** Sub-sections that have their own sidebar item and shouldn't also light this one. */
+  excludePrefixes?: string[];
 };
 
 export function initialsOf(name: string) {
@@ -95,7 +99,25 @@ export function AdminSidebar({
       icon: MessageSquareHeart,
       badge: pendingThankYous > 0 ? pendingThankYous : undefined,
     },
-    { href: "/dashboard/admin/content", label: "Content", icon: BookOpen },
+    {
+      href: "/dashboard/admin/content",
+      label: "Content",
+      icon: BookOpen,
+      excludePrefixes: [
+        "/dashboard/admin/content/events",
+        "/dashboard/admin/content/resources",
+      ],
+    },
+    {
+      href: "/dashboard/admin/content/events",
+      label: "Events",
+      icon: CalendarDays,
+    },
+    {
+      href: "/dashboard/admin/content/resources",
+      label: "Resources",
+      icon: FolderOpen,
+    },
     { href: "/dashboard/admin/reports", label: "Reports", icon: LineChart },
     { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
   ];
@@ -142,7 +164,8 @@ export function AdminSidebar({
               {NAV_ITEMS.map((item) => {
                 const active = item.exact
                   ? pathname === item.href
-                  : pathname.startsWith(item.href);
+                  : pathname.startsWith(item.href) &&
+                    !item.excludePrefixes?.some((p) => pathname.startsWith(p));
                 return (
                   <Link
                     key={item.href}
