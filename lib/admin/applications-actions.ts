@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth/guards";
 import { sendEmail } from "@/lib/email/send";
 import { getSiteUrl } from "@/lib/site-url";
+import { movePhotoToBeneficiary } from "@/lib/storage/move-photo";
 import type { Database } from "@/types/database";
 
 type ActionResult = { error: string } | { success: true };
@@ -133,6 +134,20 @@ export async function approveApplication(input: {
         insertError?.message ??
         "Could not create the beneficiary record after creating the account.",
     };
+  }
+
+  // Move the application photo to {beneficiary_id}/photo.ext so it follows the
+  // storage-policy convention, then point the beneficiary at the new path. If
+  // the move fails the beneficiary keeps the original path (nothing is lost).
+  const movedPhoto = await movePhotoToBeneficiary(
+    application.child_photo_url,
+    beneficiary.id,
+  );
+  if (movedPhoto) {
+    await supabase
+      .from("beneficiaries")
+      .update({ photo_url: movedPhoto })
+      .eq("id", beneficiary.id);
   }
 
   // Mirrors Ticket 2C's mentor-assignment rule: a mentor pick here creates a

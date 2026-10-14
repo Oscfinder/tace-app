@@ -1,5 +1,31 @@
 # TACE Platform — Updates Log
 
+## Oct 14, 2026 — Ticket 3B: Beneficiary application form (/apply)
+
+Public, no-account application form at `/apply` (`app/(public)/apply/page.tsx`, `components/apply/`). Needs migration 002 (already run) for the tightened `applications` insert policy, `application_submissions` and the anonymous `applications/` photo upload rule.
+
+### What it does
+- **Sections:** one screen each, progress bar, Back/Next, validated on Next. Self sees 8, parent/guardian 9, organisation 10. Guardian details appear for guardian *and* organisation applicants (the existing approval flow needs `guardian_email` as the login), organisation details for organisations only. Hidden sections aren't validated and are stored as null even if the client sent them.
+- **Consent:** four required boxes (accuracy, contact, assessment, no-guarantee); photography/public-profile consent is optional with a plain-language explanation. Submit stays disabled until the four are ticked. Typed name plus today's date (the server stamps `declared_at`, the date isn't editable).
+- **Under-18 self applicants** get a notice that TACE will contact a parent or guardian before any approval.
+- **Photo:** JPG/PNG up to 5MB, checked in the browser, then uploaded to `beneficiary-photos` at `applications/{id}/photo.ext` with a client-generated `crypto.randomUUID()`; the same id is used for the row. Server side: Supabase bucket limits (5MB, jpeg/png) plus the action checks the path is exactly `applications/{this id}/photo.(jpg|png)` and that the object really exists.
+- **Server Action** (`lib/apply/actions.ts`): re-validates with the same rules, honeypot (silently "succeeds" and stores nothing), rate limit of 3 per IP per 24h using a SHA-256 hash of the IP (optional `IP_HASH_SALT`; never the raw IP), then inserts with the normal anon-capable server client so RLS applies. Confirmation email via Resend (logged if no key), reference = first 8 chars of the id, uppercase.
+- **Privacy:** state lives in React only. Nothing about the child touches localStorage/sessionStorage.
+- **Approval follow-up:** `lib/storage/move-photo.ts` `movePhotoToBeneficiary()` copies the photo to `{beneficiary_id}/photo.ext`, deletes the original, and the approve action now updates `beneficiaries.photo_url`. If the move fails the old path is kept.
+
+### IP handling and salt
+- Client IP is read from `x-vercel-forwarded-for` (set by Vercel's edge, not client-controllable), then the first entry of `x-forwarded-for`, then `x-real-ip`. In production, if none is present the application is refused instead of putting everyone in one shared bucket.
+- `IP_HASH_SALT` is **required in production**: without it the action refuses submissions (fails closed) rather than hashing with a weak default. A long random value is already in `.env.local` (git-ignored). **Add the same variable in Vercel → Project → Settings → Environment Variables**, then redeploy. Changing the salt later only resets the rate-limit history.
+
+### Design notes
+- **Validation structure:** Zod skips object-level refinements while any required field is empty, which would hide guardian/organisation errors mid-form. So rules live in a base schema plus per-section checks (`validateSections`), shared by client and server.
+- **Service role is used in two narrow places:** the rate-limit table (it has no policies, by design) and an existence check on the uploaded photo. The application insert itself is not service role.
+- **Known trade-off:** the photo upload happens before the rate-limit check (ticket-specified order), so a bot could upload files without ever submitting. Bucket limits cap the damage; a periodic cleanup of old `applications/` files with no matching row would close it.
+
+### Verified
+- `tsc`, lint and production build pass. Validation rules exercised directly (hidden sections ignored, conditional rules, consents, photography optional).
+- **Not yet run end to end against Supabase.** To check: submit as guardian, self and organisation and confirm all appear under Admin → Applications; try a PDF and a >5MB file; submit a 4th time from one IP; confirm an anonymous visitor can't read an application or photo back; approve one and confirm the photo moves to `{beneficiary_id}/photo.ext`; check at 375px.
+
 ## Oct 14, 2026 — Member dashboard redesign (docs/tace_member_dashboard_v2.html)
 
 Rebuilt the member area on the v2 design: vibrant palette (blue / teal / purple / amber / pink on a pale-blue canvas), Manrope + DM Sans (loaded only in the member layout), gradient sidebar with active pill, "Your contribution matters" tip card and user block, topbar with breadcrumb, bell and profile chip, and white rounded panels with soft shadow. Palette tokens are `m-*` in `globals.css`; shared pieces (`Panel`, `Stat`, `Pill`, `ProgressRing`, `DarkBanner`, `DetailRow`, `DateBadge`, `IconTile`) live in `components/member/ui.tsx`.
