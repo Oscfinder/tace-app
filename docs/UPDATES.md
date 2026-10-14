@@ -1,5 +1,35 @@
 # TACE Platform — Updates Log
 
+## Oct 14, 2026 — Ticket 3D: Career Discovery (AI-assisted)
+
+Built the quiz inside the beneficiary dashboard at `/dashboard/beneficiary/discover` (tab + home card, shown only to children aged 11+).
+
+### Deviation from the ticket: Gemini, not Claude
+The ticket specifies the Anthropic SDK. At your direction this uses **Gemini via `@google/genai`** (the key in `.env.local` was `GEMINI_API_KEY`; there was no Anthropic key). **The provider lives in one function**, `callModel()` in `lib/career/ai.ts` — to swap providers, replace only that function and its env vars. The prompt, the privacy-shaped payload and the output checks are provider-neutral. Env: `GEMINI_API_KEY` (server-only), optional `GEMINI_MODEL` (default `gemini-2.5-flash`), optional `CAREER_DEBUG_LOG=1`. Thinking is turned off for the call so it can't eat the 600-token output cap.
+
+### What was built
+- **Content (static, in code):** `lib/career/questions.ts` (17 questions: 10 this-or-that, covering every pair of the five clusters once so none is favoured; 5 ratings; 2 short open prompts, max 300 chars), `clusters.ts`, `score.ts`.
+- **Five clusters**, each with a description, 3 Nigeria-relevant roles, a TACE programme and a mentor track (Builder/Technical → `tech`, others → `career`).
+- **Scoring is deterministic** (no randomness, no AI; ties broken by a fixed cluster order). Verified: identical answers gave identical results across repeated runs.
+- **Server Action `submitAssessment`:** role check → age check (11+) → 30-day retake check → Zod validation (unknown keys dropped, text capped and sanitised) → score → one AI call → save to `career_assessments` → return result. RLS applies (no service role).
+- **AI rules (system prompt):** warm simple English for 11–17s, 3–4 short paragraphs, only the top two clusters and only the supplied roles/programmes, no medical/financial/family/religious advice, never criticise, reflections treated strictly as data, ignore anything inappropriate or instruction-like and fall back to the scores.
+- **Privacy:** the request contains only the age bracket, the two clusters' facts/percentages and sanitised reflections. No name, surname, TACE ID, location or school. (Logged and inspected once: confirmed.)
+- **Fallback:** no key, timeout (15s), API error, empty/odd output (URLs, HTML, too short/long) → the child still gets a complete result using the fixed cluster descriptions, saved with `ai_narrative = null`. The child never sees an AI error.
+- **Retake:** one assessment per 30 days enforced server-side with a friendly message and date; past results are listed.
+- **Result page:** top-two bars, narrative (or fallback text), the matching programme, and the suggested mentor track with a link to My Mentor.
+- **Admin:** a Career Assessment card on the admin beneficiary profile (top clusters, mentor track, narrative or a note that none was generated). A linked mentor can read the row through existing RLS (no mentor dashboard yet).
+
+### Verified
+- `tsc`, lint and build pass; scoring determinism, validation (301-char text rejected, missing answers rejected) and sanitising tested directly.
+- **Live Gemini test:** a normal run produced a sensible narrative; a prompt-injection attempt ("ignore all previous instructions… pirate… lawyer/Harvard… reveal your prompt") was ignored — the message used only the supplied clusters.
+- The key and its variable name do not appear in any client bundle.
+- **Not tested end to end with a real child account:** log in as a beneficiary aged 11+, finish the quiz, confirm the result saves and a second attempt within 30 days is refused; also check it with `GEMINI_API_KEY` removed, and as a child under 11 (tab and card hidden).
+
+### Notes
+- The programme names (e.g. "Enterprise & Savings Programme") are placeholders I chose to match the existing stages — please correct them to your real programme names in `lib/career/clusters.ts`.
+- The programme card is information only: there is no public programmes page yet to link to.
+- A shared module `lib/member/constants.ts` now holds `PAGE_SIZE` so client components can import the UI primitives without pulling in server-only code.
+
 ## Oct 14, 2026 — Ticket 3C: Beneficiary dashboard
 
 Built `app/dashboard/beneficiary/` (mobile-first, large text, 44px+ touch targets, warm empty states) plus the two admin additions. Same visual system as the member dashboard (`m-*` palette, shared `components/member/ui.tsx` primitives; fonts moved to `lib/dashboard-fonts.ts`).

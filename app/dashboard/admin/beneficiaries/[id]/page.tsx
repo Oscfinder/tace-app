@@ -19,6 +19,8 @@ import { MentorAssignment } from "@/components/admin/beneficiaries/mentor-assign
 import { InterventionLogger } from "@/components/admin/beneficiaries/intervention-logger";
 import { DocumentUploader } from "@/components/admin/beneficiaries/document-uploader";
 import { calculateAge } from "@/lib/age";
+import { getAssessments } from "@/lib/career/queries";
+import { CareerAssessmentCard } from "@/components/admin/beneficiaries/career-assessment-card";
 
 const SENDER_LABELS: Record<string, string> = {
   mentor: "Mentor",
@@ -45,6 +47,7 @@ export default async function BeneficiaryProfilePage({
     messages,
     documents,
     assignableMentors,
+    assessments,
   ] = await Promise.all([
     beneficiary.application_id
       ? getApplication(beneficiary.application_id)
@@ -56,6 +59,7 @@ export default async function BeneficiaryProfilePage({
     getRecentMessages(id),
     getDocuments(id),
     getAssignableMentors(),
+    getAssessments(id),
   ]);
 
   return (
@@ -106,6 +110,8 @@ export default async function BeneficiaryProfilePage({
               No linked application on file for this beneficiary.
             </div>
           )}
+
+          <CareerAssessmentCard latest={assessments[0]} />
 
           <InterventionLogger
             beneficiaryId={beneficiary.id}

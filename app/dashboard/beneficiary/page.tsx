@@ -5,11 +5,13 @@ import {
   GraduationCap,
   Heart,
   Award,
+  Compass,
   Sparkles,
 } from "lucide-react";
 import { getMyBeneficiary } from "@/lib/beneficiary/queries";
 import { STAGE_LABELS, stageProgress } from "@/lib/beneficiary-stages";
 import { STAGE_MESSAGES } from "@/lib/beneficiary/stages";
+import { MIN_AGE } from "@/lib/career/score";
 import { EmptyState, IconTile, Pill, formatDate } from "@/components/member/ui";
 
 const LINKS = [
@@ -18,6 +20,7 @@ const LINKS = [
   { href: "/dashboard/beneficiary/mentor", label: "My Mentor", hint: "Your guide and cheerleader", icon: GraduationCap, accent: "purple" },
   { href: "/dashboard/beneficiary/sponsor", label: "My Sponsor", hint: "Say thank you", icon: Heart, accent: "amber" },
   { href: "/dashboard/beneficiary/progress", label: "My Progress", hint: "Updates and certificates", icon: Award, accent: "teal" },
+  { href: "/dashboard/beneficiary/discover", label: "Career Discovery", hint: "Find out what you could become", icon: Compass, accent: "pink" },
 ] as const;
 
 export default async function BeneficiaryHomePage() {
@@ -101,7 +104,9 @@ export default async function BeneficiaryHomePage() {
       </section>
 
       <section aria-label="Your pages" className="grid gap-3">
-        {LINKS.map((l) => (
+        {LINKS.filter(
+          (l) => !l.href.endsWith("/discover") || (me.age !== null && me.age >= MIN_AGE),
+        ).map((l) => (
           <Link
             key={l.href}
             href={l.href}

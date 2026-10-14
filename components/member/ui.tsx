@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Inbox, type LucideIcon } from "lucide-react";
-import { PAGE_SIZE } from "@/lib/member/queries";
+import { PAGE_SIZE } from "@/lib/member/constants";
 
 // Shared building blocks for the member dashboard, following
 // docs/tace_member_dashboard_v2.html: white rounded panels on a pale-blue

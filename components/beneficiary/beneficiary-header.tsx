@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Heart,
   Award,
+  Compass,
   Bell,
   LogOut,
 } from "lucide-react";
@@ -27,15 +28,18 @@ const TABS = [
   { href: "/dashboard/beneficiary/mentor", label: "My Mentor", icon: GraduationCap },
   { href: "/dashboard/beneficiary/sponsor", label: "My Sponsor", icon: Heart },
   { href: "/dashboard/beneficiary/progress", label: "My Progress", icon: Award },
+  { href: "/dashboard/beneficiary/discover", label: "Discover", icon: Compass },
   { href: "/dashboard/beneficiary/notifications", label: "Alerts", icon: Bell },
 ];
 
 export function BeneficiaryHeader({
   notifications,
   unread,
+  showDiscover,
 }: {
   notifications: BellNotification[];
   unread: number;
+  showDiscover: boolean;
 }) {
   const pathname = usePathname();
   const [signOutOpen, setSignOutOpen] = useState(false);
@@ -77,7 +81,9 @@ export function BeneficiaryHeader({
         aria-label="Sections"
         className="mx-auto mt-2 flex max-w-3xl gap-2 overflow-x-auto px-4 pb-3 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {TABS.map((tab) => {
+        {TABS.filter(
+          (tab) => showDiscover || !tab.href.endsWith("/discover"),
+        ).map((tab) => {
           const active = tab.exact
             ? pathname === tab.href
             : pathname.startsWith(tab.href);

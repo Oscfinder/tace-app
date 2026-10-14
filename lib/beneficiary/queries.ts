@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { calculateAge } from "@/lib/age";
 import type { Database } from "@/types/database";
 
 // Every query here runs under the signed-in beneficiary's own RLS, so it can
@@ -21,6 +22,7 @@ export type MyBeneficiary = {
   tace_id: string | null;
   current_stage: Stage;
   created_at: string;
+  age: number | null;
   photoUrl: string | null;
 };
 
@@ -33,7 +35,9 @@ export async function getMyBeneficiary(): Promise<MyBeneficiary | null> {
 
   const { data } = await supabase
     .from("beneficiaries")
-    .select("id, first_name, tace_id, current_stage, created_at, photo_url")
+    .select(
+      "id, first_name, tace_id, current_stage, created_at, photo_url, date_of_birth",
+    )
     .eq("profile_id", user.id)
     .maybeSingle();
   if (!data) return null;
@@ -54,6 +58,7 @@ export async function getMyBeneficiary(): Promise<MyBeneficiary | null> {
     tace_id: data.tace_id,
     current_stage: data.current_stage ?? "identified",
     created_at: data.created_at ?? new Date().toISOString(),
+    age: data.date_of_birth ? calculateAge(data.date_of_birth) : null,
     photoUrl,
   };
 }

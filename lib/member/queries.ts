@@ -5,7 +5,8 @@ import type { Database } from "@/types/database";
 // `beneficiaries` or `applications` — children appear only via stories and
 // the consent-gated `public_beneficiaries` view.
 
-export const PAGE_SIZE = 10;
+import { PAGE_SIZE } from "@/lib/member/constants";
+export { PAGE_SIZE };
 
 export type AnnouncementRow =
   Database["public"]["Tables"]["announcements"]["Row"];
