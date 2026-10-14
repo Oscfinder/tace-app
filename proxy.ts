@@ -11,16 +11,18 @@ export async function proxy(request: NextRequest) {
 
   let role: Role | null = null;
   let status: string | null = null;
+  let profileCompleted = true;
 
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, status")
+      .select("role, status, profile_completed")
       .eq("id", user.id)
       .single();
     if (profile && (ROLES as readonly string[]).includes(profile.role)) {
       role = profile.role as Role;
       status = profile.status as string;
+      profileCompleted = profile.profile_completed;
     }
   }
 
@@ -29,6 +31,16 @@ export async function proxy(request: NextRequest) {
   );
   const isPendingRoute = pathname.startsWith("/pending");
   const isDashboardRoute = pathname.startsWith("/dashboard");
+
+  // Google sign-ups must finish /complete-profile before reaching anything else.
+  if (
+    user &&
+    role &&
+    !profileCompleted &&
+    (isPendingRoute || isDashboardRoute)
+  ) {
+    return NextResponse.redirect(new URL("/complete-profile", request.url));
+  }
 
   // Auth routes (/login, /signup/*) — active, logged-in users go to their dashboard
   if (isAuthRoute) {

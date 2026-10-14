@@ -39,15 +39,26 @@ export function AuthCard({
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#02142d]/10 via-[#02122b]/35 to-[#02122b]/88" />
 
-        <Link href="/" className="absolute left-[8%] top-7 z-10 lg:top-10">
+        <Link
+          href="/"
+          className="absolute left-[8%] top-7 z-10 flex items-center gap-2.5 lg:top-10"
+        >
           <Image
-            src="/images/tace.png"
-            alt="TACE Foundation"
-            width={616}
-            height={405}
+            src="/images/tace-icon.png"
+            alt=""
+            width={192}
+            height={192}
             priority
-            className="h-16 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.45)] lg:h-20"
+            className="size-11 shrink-0 object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.45)] lg:size-14"
           />
+          <span className="flex flex-col leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
+            <span className="font-heading text-lg font-bold lg:text-xl">
+              TACE Foundation
+            </span>
+            <span className="text-xs text-white/70 lg:text-sm">
+              Guiding Children Toward Independence
+            </span>
+          </span>
         </Link>
 
         <div className="relative z-10 max-w-[620px] px-[8%] pb-[7%] text-white">

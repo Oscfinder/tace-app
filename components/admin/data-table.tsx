@@ -43,7 +43,9 @@ export type DataTableFilter<T> = {
   key: string;
   label: string;
   options: { label: string; value: string }[];
-  accessor: (row: T) => string | null | undefined;
+  /** Return an array (e.g. a tags column) to match if it *contains* the
+   * selected value, rather than equalling it. */
+  accessor: (row: T) => string | string[] | null | undefined;
 };
 
 export function DataTable<T>({
@@ -86,7 +88,12 @@ export function DataTable<T>({
     for (const filter of filters ?? []) {
       const value = filterValues[filter.key];
       if (value && value !== ALL_VALUE) {
-        rows = rows.filter((row) => filter.accessor(row) === value);
+        rows = rows.filter((row) => {
+          const rowValue = filter.accessor(row);
+          return Array.isArray(rowValue)
+            ? rowValue.includes(value)
+            : rowValue === value;
+        });
       }
     }
 

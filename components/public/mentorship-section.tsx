@@ -33,7 +33,10 @@ const PLACEHOLDER_MENTORS = [
 
 export function MentorshipSection() {
   return (
-    <section className="bg-gradient-to-br from-tace-navy to-[#0d2137] px-4 py-20 md:px-8 md:py-[88px]">
+    <section
+      id="mentor"
+      className="bg-gradient-to-br from-tace-navy to-[#0d2137] px-4 py-20 md:px-8 md:py-[88px]"
+    >
       <div className="mx-auto grid max-w-[1280px] gap-16 lg:grid-cols-2 lg:items-center">
         <div>
           <SectionHeading
@@ -61,14 +64,14 @@ export function MentorshipSection() {
           </div>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button
-              render={<Link href="/mentor" />}
+              render={<Link href="/signup/mentor" />}
               size="lg"
               className="bg-tace-yellow text-tace-navy hover:bg-tace-yellow/90"
             >
               Become a Mentor
             </Button>
             <Button
-              render={<Link href="/mentor" />}
+              render={<Link href="/signup/mentor" />}
               size="lg"
               variant="outline"
               className="border-white/50 bg-transparent text-white hover:bg-white/10"

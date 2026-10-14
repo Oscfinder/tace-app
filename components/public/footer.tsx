@@ -5,7 +5,7 @@ const QUICK_LINKS = [
   { href: "/about", label: "About" },
   { href: "/programmes", label: "Programmes" },
   { href: "/sponsor", label: "Sponsor" },
-  { href: "/mentor", label: "Mentor" },
+  { href: "/#mentor", label: "Mentor" },
   { href: "/signup/member", label: "Become a Member" },
   { href: "/donate", label: "Donate" },
   { href: "/contact", label: "Contact" },
@@ -24,7 +24,7 @@ export function Footer() {
         <div className="grid gap-10 md:grid-cols-[2.5fr_1fr_1fr_1fr]">
           <div>
             <Image
-              src="/images/tace.png"
+              src="/images/tace-white.png"
               alt="TACE Foundation"
               width={616}
               height={405}

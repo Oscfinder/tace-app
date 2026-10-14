@@ -1,16 +1,47 @@
 "use client";
 
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-export function GoogleButton({ label }: { label: string }) {
-  const [showNotice, setShowNotice] = useState(false);
+// `intent` is only a hint for the "Complete your profile" step (which role's
+// form to pre-select). It grants nothing — the server action decides.
+export function GoogleButton({
+  label,
+  intent,
+}: {
+  label: string;
+  intent?: "member" | "sponsor" | "mentor";
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleClick() {
+    setLoading(true);
+    setError(null);
+    const siteUrl = (
+      process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
+    ).replace(/\/+$/, "");
+    const redirectTo = `${siteUrl}/auth/callback${intent ? `?intent=${intent}` : ""}`;
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    // On success the browser is already navigating to Google.
+    if (error) {
+      setError("Couldn't start Google sign-in. Please try again.");
+      setLoading(false);
+    }
+  }
 
   return (
     <div>
       <button
         type="button"
-        onClick={() => setShowNotice(true)}
-        className="flex h-14 w-full items-center justify-center gap-2.5 rounded-[13px] border border-[#d5e1ee] bg-white text-[15px] font-bold text-tace-navy transition-colors hover:bg-[#f7faff]"
+        onClick={handleClick}
+        disabled={loading}
+        className="flex h-14 w-full items-center justify-center gap-2.5 rounded-[13px] border border-[#d5e1ee] bg-white text-[15px] font-bold text-tace-navy transition-colors hover:bg-[#f7faff] disabled:opacity-60"
       >
         <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
           <path
@@ -30,12 +61,11 @@ export function GoogleButton({ label }: { label: string }) {
             d="M12 4.77c1.76 0 3.34.6 4.58 1.78l3.1-3.1C17.94 1.6 15.24.5 12 .5 7.13.5 2.98 3.2 1.02 7.18l3.62 2.82c1.04-3.11 3.94-5.23 7.36-5.23z"
           />
         </svg>
-        {label}
+        {loading ? "Redirecting..." : label}
       </button>
-      {showNotice ? (
-        <p className="mt-2 text-center text-xs text-tace-gray">
-          Google sign-in isn&apos;t set up yet — please use email and password
-          for now.
+      {error ? (
+        <p role="alert" className="mt-2 text-center text-xs text-tace-red">
+          {error}
         </p>
       ) : null}
     </div>

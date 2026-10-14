@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -102,14 +103,19 @@ export function AdminSidebar({
             href="/dashboard/admin"
             className="flex items-center gap-2.5 px-2"
           >
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-tace-blue font-heading text-[17px] font-bold text-white">
-              T
-            </span>
+            <Image
+              src="/images/tace-icon.png"
+              alt=""
+              width={192}
+              height={192}
+              priority
+              className="size-10 shrink-0 object-contain"
+            />
             <span className="flex flex-col leading-tight">
-              <span className="font-heading text-base font-bold text-white">
+              <span className="font-heading text-lg font-bold text-white">
                 TACE Foundation
               </span>
-              <span className="text-[11px] text-white/40">
+              <span className="text-xs text-white/40">
                 Guiding Children Toward Independence
               </span>
             </span>

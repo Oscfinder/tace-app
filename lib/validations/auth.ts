@@ -21,6 +21,20 @@ export const COMMITTEE_PREFERENCES = [
   "Health & Medical Outreach",
 ] as const;
 
+export const TRUSTEE_ROLES = [
+  "Chairman",
+  "Secretary / Legal",
+  "Care & Welfare",
+  "Education & Programs",
+  "Spiritual & Chaplaincy",
+  "Outreach & Partnerships",
+  "Communications",
+  "Finance & Administration",
+  "Health & Medical",
+] as const;
+
+export const trusteeRoleSchema = z.enum(TRUSTEE_ROLES);
+
 export const memberSignupSchema = z
   .object({
     full_name: z.string().min(2, "Enter your full name"),
@@ -92,7 +106,46 @@ export const mentorSignupSchema = z
     path: ["confirm_password"],
   });
 
-export type LoginInput = z.infer<typeof loginSchema>;
+// "Complete your profile" after Google sign-in: the same role-specific fields
+// as each signup form, minus email/password. Only these three roles exist
+// here — admin and beneficiary are not representable in this schema.
+export const SELF_SERVE_ROLES = ["member", "sponsor", "mentor"] as const;
+
+const completeProfileBase = {
+  full_name: z.string().trim().min(2, "Enter your full name"),
+  phone: z
+    .string()
+    .regex(nigerianPhoneRegex, "Enter a valid Nigerian phone number"),
+};
+
+export const completeProfileSchema = z.discriminatedUnion("role", [
+  z.object({
+    ...completeProfileBase,
+    role: z.literal("member"),
+    occupation: z.string().trim().min(1, "Enter your occupation"),
+    committee_preference: z.string().min(1, "Select a committee"),
+    reason_for_joining: z.string().trim().min(1, "Tell us why you want to join"),
+  }),
+  z.object({
+    ...completeProfileBase,
+    role: z.literal("sponsor"),
+  }),
+  z.object({
+    ...completeProfileBase,
+    role: z.literal("mentor"),
+    mentor_track: z.enum(MENTOR_TRACKS, {
+      message: "Select a mentorship track",
+    }),
+    profession: z.string().trim().min(1, "Enter your profession"),
+    expertise: z.string().optional(),
+    availability: z.enum(MENTOR_AVAILABILITY).optional(),
+    preferred_age_group: z.enum(MENTOR_AGE_GROUPS).optional(),
+    motivation: z.string().trim().min(1, "Tell us why you want to mentor"),
+  }),
+]);
+
+export type CompleteProfileInput = z.infer<typeof completeProfileSchema>;
+export type LoginInput =z.infer<typeof loginSchema>;
 export type MemberSignupInput = z.infer<typeof memberSignupSchema>;
 export type SponsorSignupInput = z.infer<typeof sponsorSignupSchema>;
 export type MentorSignupInput = z.infer<typeof mentorSignupSchema>;

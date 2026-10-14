@@ -24,14 +24,29 @@ export default async function Home() {
   const supabase = await createClient();
   const admin = createAdminClient();
 
-  // Beneficiaries that belong to at least one published project — RLS on
-  // project_beneficiaries already restricts anon reads to published rows.
-  const { data: publishedLinks } = await supabase
-    .from("project_beneficiaries")
-    .select("beneficiary_id");
-  const publishedIds = [
-    ...new Set((publishedLinks ?? []).map((l) => l.beneficiary_id)),
-  ];
+  // Beneficiaries that belong to at least one published, non-archived
+  // project. RLS (project_beneficiaries_published_select /
+  // projects_published_select, migration 003) already enforces this same
+  // restriction for anon reads — this explicit filter is defense-in-depth
+  // on top of that, not instead of it, so the query is still correct even
+  // if it were ever run through a client that bypasses RLS.
+  const { data: publishedProjects } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("is_published", true)
+    .neq("status", "archived");
+  const publishedProjectIds = (publishedProjects ?? []).map((p) => p.id);
+
+  let publishedIds: string[] = [];
+  if (publishedProjectIds.length > 0) {
+    const { data: publishedLinks } = await supabase
+      .from("project_beneficiaries")
+      .select("beneficiary_id")
+      .in("project_id", publishedProjectIds);
+    publishedIds = [
+      ...new Set((publishedLinks ?? []).map((l) => l.beneficiary_id)),
+    ];
+  }
 
   let beneficiaries: FeaturedBeneficiary[] = [];
   if (publishedIds.length > 0) {

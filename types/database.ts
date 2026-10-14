@@ -43,6 +43,7 @@ export type Database = {
           trustee_role: string | null;
           committee: string | null;
           avatar_url: string | null;
+          profile_completed: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -431,6 +432,7 @@ export type Database = {
           location: string | null;
           event_date: string | null;
           event_type: EventType | null;
+          minutes: string | null;
           created_by: string | null;
           created_at: string;
         };
@@ -457,8 +459,125 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["audit_log"]["Row"]>;
         Relationships: [];
       };
+      committee_updates: {
+        Row: {
+          id: string;
+          member_id: string;
+          committee: string | null;
+          update_month: string;
+          content: string;
+          created_at: string;
+        };
+        Insert: Partial<
+          Database["public"]["Tables"]["committee_updates"]["Row"]
+        > & { member_id: string; content: string };
+        Update: Partial<
+          Database["public"]["Tables"]["committee_updates"]["Row"]
+        >;
+        Relationships: [];
+      };
+      event_rsvps: {
+        Row: {
+          id: string;
+          event_id: string;
+          profile_id: string;
+          status: "attending" | "declined";
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["event_rsvps"]["Row"]> & {
+          event_id: string;
+          profile_id: string;
+          status: "attending" | "declined";
+        };
+        Update: Partial<Database["public"]["Tables"]["event_rsvps"]["Row"]>;
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          profile_id: string;
+          title: string;
+          body: string | null;
+          type: string | null;
+          is_read: boolean;
+          created_at: string;
+        };
+        Insert: Partial<
+          Database["public"]["Tables"]["notifications"]["Row"]
+        > & { profile_id: string; title: string };
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Row"]>;
+        Relationships: [];
+      };
+      thank_you_messages: {
+        Row: {
+          id: string;
+          beneficiary_id: string;
+          sponsor_id: string | null;
+          content: string;
+          status: "pending" | "approved" | "rejected";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<
+          Database["public"]["Tables"]["thank_you_messages"]["Row"]
+        > & { beneficiary_id: string; content: string };
+        Update: Partial<
+          Database["public"]["Tables"]["thank_you_messages"]["Row"]
+        >;
+        Relationships: [];
+      };
+      career_assessments: {
+        Row: {
+          id: string;
+          beneficiary_id: string;
+          answers: Record<string, unknown> | null;
+          scores: Record<string, number> | null;
+          top_clusters: string[] | null;
+          ai_narrative: string | null;
+          recommended_mentor_track: MentorTrack | null;
+          created_at: string;
+        };
+        Insert: Partial<
+          Database["public"]["Tables"]["career_assessments"]["Row"]
+        > & { beneficiary_id: string };
+        Update: Partial<
+          Database["public"]["Tables"]["career_assessments"]["Row"]
+        >;
+        Relationships: [];
+      };
+      application_submissions: {
+        Row: { id: string; ip_hash: string; created_at: string };
+        Insert: Partial<
+          Database["public"]["Tables"]["application_submissions"]["Row"]
+        > & { ip_hash: string };
+        Update: Partial<
+          Database["public"]["Tables"]["application_submissions"]["Row"]
+        >;
+        Relationships: [];
+      };
     };
     Views: {
+      my_mentor: {
+        Row: {
+          full_name: string;
+          profession: string | null;
+          mentor_track: MentorTrack | null;
+        };
+        Relationships: [];
+      };
+      my_sponsor: {
+        Row: { first_name: string };
+        Relationships: [];
+      };
+      project_funding: {
+        Row: { project_id: string; raised: number };
+        Relationships: [];
+      };
+      committee_lead: {
+        Row: { full_name: string };
+        Relationships: [];
+      };
       public_beneficiaries: {
         Row: {
           id: string;

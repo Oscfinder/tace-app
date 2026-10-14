@@ -19,6 +19,7 @@ async function signUp(input: {
   phone: string;
   password: string;
   role: Role;
+  extraMetadata?: Record<string, string>;
 }) {
   const supabase = await createClient();
   return supabase.auth.signUp({
@@ -29,6 +30,7 @@ async function signUp(input: {
         full_name: input.full_name,
         phone: input.phone,
         role: input.role,
+        ...input.extraMetadata,
       },
     },
   });
@@ -37,7 +39,20 @@ async function signUp(input: {
 export async function signUpMember(
   input: MemberSignupInput,
 ): Promise<ActionResult> {
-  const { error } = await signUp({ ...input, role: "member" });
+  // occupation/committee_preference/reason_for_joining have no columns of
+  // their own on `profiles` (and handle_new_user() doesn't read them even
+  // if they did) — they're display-only reference info Ticket 2D's admin
+  // activation view shows, so they live in auth user_metadata rather than
+  // needing a schema change.
+  const { error } = await signUp({
+    ...input,
+    role: "member",
+    extraMetadata: {
+      occupation: input.occupation,
+      committee_preference: input.committee_preference,
+      reason_for_joining: input.reason_for_joining,
+    },
+  });
   if (error) return { error: error.message };
   return { success: true };
 }
@@ -45,8 +60,33 @@ export async function signUpMember(
 export async function signUpSponsor(
   input: SponsorSignupInput,
 ): Promise<ActionResult> {
-  const { error } = await signUp({ ...input, role: "sponsor" });
+  const { data, error } = await signUp({ ...input, role: "sponsor" });
   if (error) return { error: error.message };
+  if (!data.user)
+    return { error: "Could not create your account. Please try again." };
+
+  // Same gap the mentor flow already guards against: `sponsors` has no
+  // public/self insert policy, and without this insert Ticket 2E's
+  // activation flow would have no sponsors row to find or update at all.
+  // Anyone who signs up here (rather than being logged as a one-time,
+  // no-account donor by an admin) is by definition a long-term sponsor.
+  const admin = createAdminClient();
+
+  const { data: existingSponsor, error: existingSponsorError } = await admin
+    .from("sponsors")
+    .select("id")
+    .eq("profile_id", data.user.id)
+    .maybeSingle();
+
+  if (existingSponsorError) return { error: existingSponsorError.message };
+  if (existingSponsor) return { success: true };
+
+  const { error: sponsorError } = await admin.from("sponsors").insert({
+    profile_id: data.user.id,
+    sponsorship_type: "long_term",
+  });
+
+  if (sponsorError) return { error: sponsorError.message };
   return { success: true };
 }
 

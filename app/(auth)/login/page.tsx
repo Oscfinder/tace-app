@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AuthCard } from "@/components/forms/auth-card";
@@ -18,6 +19,37 @@ import {
 import { Input } from "@/components/ui/input";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { signIn } from "@/lib/auth/actions";
+
+const QUERY_ERROR_MESSAGES: Record<string, string> = {
+  invalid_link: "That link is invalid or has expired. Please try again.",
+  oauth_failed: "Google sign-in didn't complete. Please try again.",
+  account_inactive: "Your account is inactive. Contact TACE support.",
+  account_suspended: "Your account is suspended. Contact TACE support.",
+};
+
+function LoginQueryError() {
+  const searchParams = useSearchParams();
+  const queryError = searchParams.get("error");
+  const message = queryError
+    ? (QUERY_ERROR_MESSAGES[queryError] ?? null)
+    : null;
+  if (searchParams.get("reset") === "success" && !message) {
+    return (
+      <p
+        role="status"
+        className="mb-5 rounded-lg bg-tace-green/10 px-3 py-2.5 text-sm text-tace-green"
+      >
+        Your password has been updated. Please sign in.
+      </p>
+    );
+  }
+  if (!message) return null;
+  return (
+    <div className="mb-5">
+      <FormError message={message} />
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const [serverError, setServerError] = useState<string | null>(null);
@@ -44,6 +76,9 @@ export default function LoginPage() {
       topLinkHref="/signup/member"
       activeTab="login"
     >
+      <Suspense fallback={null}>
+        <LoginQueryError />
+      </Suspense>
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <FieldGroup>
           <Field data-invalid={!!errors.email}>

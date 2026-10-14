@@ -11,7 +11,7 @@ const NAV_LINKS = [
   { href: "/about", label: "About" },
   { href: "/programmes", label: "Programmes" },
   { href: "/sponsor", label: "Sponsor a Child" },
-  { href: "/mentor", label: "Mentor" },
+  { href: "/#mentor", label: "Mentor" },
   { href: "/stories", label: "Stories" },
   { href: "/donate", label: "Donate" },
   { href: "/contact", label: "Contact" },
@@ -42,7 +42,7 @@ export function Navbar() {
       <div className="mx-auto flex h-20 max-w-[1280px] items-center justify-between px-4 md:px-8">
         <Link href="/" className="flex items-center">
           <Image
-            src="/images/tace.png"
+            src={scrolled ? "/images/tace.png" : "/images/tace-white.png"}
             alt="TACE Foundation"
             width={616}
             height={405}
@@ -121,7 +121,7 @@ export function Navbar() {
         <div className="fixed inset-0 z-50 flex flex-col bg-tace-navy p-6 lg:hidden">
           <div className="flex items-center justify-between">
             <Image
-              src="/images/tace.png"
+              src="/images/tace-white.png"
               alt="TACE Foundation"
               width={616}
               height={405}

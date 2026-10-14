@@ -232,7 +232,7 @@ export default function MentorSignupPage() {
         or
         <span className="h-px flex-1 bg-[#dbe5f1]" />
       </div>
-      <GoogleButton label="Sign up with Google" />
+      <GoogleButton label="Sign up with Google" intent="mentor" />
     </AuthCard>
   );
 }

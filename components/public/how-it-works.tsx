@@ -30,7 +30,7 @@ const CARDS = [
     description:
       "Share your professional experience with a young person. 1 hour a month can change a life.",
     amount: "1 hour/month minimum",
-    href: "/mentor",
+    href: "/signup/mentor",
     border: "before:bg-tace-green",
     iconBg: "bg-tace-green/10 text-tace-green",
   },

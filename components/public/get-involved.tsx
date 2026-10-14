@@ -27,7 +27,7 @@ const CARDS = [
     title: "Become a Mentor",
     description:
       "Give your professional expertise to a child who needs guidance.",
-    href: "/mentor",
+    href: "/signup/mentor",
     cta: "Mentor a Child",
     color: "bg-tace-green/10 text-tace-green",
   },

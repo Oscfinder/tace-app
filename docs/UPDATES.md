@@ -1,5 +1,495 @@
 # TACE Platform — Updates Log
 
+## Oct 14, 2026 — Email-link handling, Google sign-in, and a signup role-escalation fix
+
+### Security fix (run `supabase/migrations/005_signup_role_hardening.sql`)
+
+`handle_new_user()` trusted `raw_user_meta_data->>'role'`, so anyone calling the signup API directly could create a profile with role `admin`. It now accepts only `member` / `sponsor` / `mentor` and defaults to `member`. Existing admin-created beneficiaries are unaffected: Ticket 2B already sets `role='beneficiary'` with an explicit profile update after `createUser`. **Run 005 before deploying this code** — `proxy.ts` now selects `profiles.profile_completed`, which 005 adds.
+
+### Google sign-in
+
+- `GoogleButton` now calls `signInWithOAuth({ provider: "google" })` with `redirectTo = NEXT_PUBLIC_SITE_URL/auth/callback?intent=<role>`; on login, member, sponsor and mentor signup. `intent` only pre-selects a role on the next screen and grants nothing.
+- `app/auth/callback/route.ts` exchanges the code, then: new user (`profile_completed=false`) → `/complete-profile`; pending → `/pending`; inactive/suspended → signed out with an error; else the dashboard.
+- Postgres creates a profile for *every* new auth user, so "new" can't be detected by a missing row. 005 adds `profiles.profile_completed` (false for OAuth signups, true for email signups and all existing rows; users can't edit it — it's covered by the privilege-escalation trigger).
+- `/complete-profile` collects the same role-specific fields as each signup form. The `completeProfile` Server Action validates with a Zod union that only contains member/sponsor/mentor (admin and beneficiary are unrepresentable), works only while `profile_completed=false` (once, right after signup), never writes `status` (stays `pending`), and uses the service-role client because users can't change their own role. `proxy.ts` sends incomplete profiles to `/complete-profile` from `/pending` and the dashboards.
+
+### Password reset / email links
+
+`app/auth/confirm`, `/forgot-password`, `/reset-password` and the login "Forgot password?" link already existed; changes:
+- Forgot-password now **always** returns the same message (errors, e.g. rate limits, are logged server-side only) and passes `redirectTo` from `NEXT_PUBLIC_SITE_URL` (`lib/site-url.ts`).
+- After a successful reset the user is signed out and sent to `/login?reset=success` (with a confirmation notice) instead of straight to the dashboard.
+- `/auth/confirm` only honours same-site `next` paths (it was an open redirect).
+- The Ticket 2B approval email now links to `NEXT_PUBLIC_SITE_URL/auth/confirm?token_hash=<hashed_token>&type=recovery`, so it lands on `/reset-password` with a session via the same route as the templates.
+
+### Dashboard settings needed (not code)
+
+- Authentication → Providers → Google: enable and add the Google OAuth client ID/secret; in Google Cloud add Supabase's callback URL as an authorised redirect URI.
+- Authentication → URL Configuration: Site URL = `NEXT_PUBLIC_SITE_URL`; allow-list `<site>/auth/callback` (and `/auth/confirm`).
+- Email templates — Confirm signup link: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup`; Reset password link: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`.
+
+### Verified
+
+- `tsc`, lint and a clean build pass. Not exercised end to end (needs Google configured and a real inbox). One transient build failure from a stale `.next` cache (font module) cleared with a fresh `.next`.
+
+## Oct 7, 2026 — Ticket 3A: Member Dashboard
+
+Built all nine member pages under `app/dashboard/member/` (layout + bell, Home, Foundation Updates, Impact Feed, My Committee, Events & Meetings, Campaigns, Resources, My Profile). Data in `lib/member/queries.ts`, writes in `lib/member/actions.ts` (Zod-validated, `requireRole("member")`), shared bell + actions in `components/shared/notification-bell.tsx` / `lib/notifications/actions.ts` (3C reuses them).
+
+### New migration to run: `supabase/migrations/004_member_dashboard.sql`
+
+Members' RLS correctly can't read donations or other profiles, so three things needed the DB:
+- **`project_funding` view** — per-project `raised` sum only (published, non-archived). No donor names, no individual amounts.
+- **`committee_lead` view** — the active trustee in the caller's own committee, name only.
+- **`avatars` bucket** (private, 2MB, jpg/png, own-folder policies) and a **member read policy on `beneficiary-photos`** limited to photos already exposed by `public_beneficiaries`, so Campaign cards sign photo URLs with the member's own client, no service role.
+
+### Decisions to know about
+
+- **Home stats:** the ticket allows donation totals "only if admin has allowed" — there is no such setting, so Home shows the beneficiary count only (from `public_beneficiaries`, so it counts only photo-consented children).
+- **Next committee meeting:** `events` has no committee column, so it's the next `meeting` event whose title contains the committee name. Admin should name committee meetings accordingly (e.g. "Finance Committee monthly meeting").
+- **RSVP:** two-state (Attend/Decline, switchable). Users have no delete policy on `event_rsvps`, so an RSVP can't be cleared, only flipped.
+- **Monthly update:** upsert on (member, month); the DB only permits editing the current month.
+- **Impact Feed** "stage milestones": each story shows the linked child's current stage via `public_beneficiaries` when consent allows.
+- **Access control:** `proxy.ts` already redirects pending, inactive, suspended and wrong-role users away from `/dashboard/member/*`; no change needed. Nothing in `lib/member/` queries `beneficiaries` or `applications` (grep-verified).
+- Types in `types/database.ts` updated for all Phase 3 tables and views.
+
+### Verified / not verified
+
+- `tsc`, `npm run lint`, `npm run build` — clean.
+- **Not run against real data**: run 004, then log in as an active member and check each page, the same-month edit, RSVP persistence, and a 375px viewport. Resources needs a file under `resources/<category>/` uploaded by admin to show anything (there's no admin upload UI yet).
+
+## Oct 7, 2026 — Ticket 3.0: Phase 3 schema additions
+
+Added `supabase/migrations/002_phase3_additions.sql` (idempotent; run once in the Supabase SQL Editor, after 001).
+
+- **Tables (RLS on in the same file):** `committee_updates`, `event_rsvps`, `notifications`, `thank_you_messages`, `career_assessments`, `application_submissions` (RLS on, no policies — service role only).
+- **`events.minutes`** column added.
+- **`applications_public_insert`** now requires `status='pending'` and null `reviewed_by`/`reviewed_at`/`admin_notes`.
+- **Notification guard trigger** — non-admins can only change `is_read`; other columns silently revert (same pattern as the profiles trigger). Service role is exempt.
+- **Views `my_mentor` / `my_sponsor`** — filtered by `auth.uid()`, granted to `authenticated` only (anon/public explicitly revoked). Mentor: name, profession, track; sponsor: first name only.
+- **Storage:** private `resources` bucket (admin all, active members read); anon INSERT-only on `beneficiary-photos` under `applications/`; bucket capped at 5MB, jpeg/png.
+
+### Beyond the ticket text (small, deliberate)
+
+- `committee_updates` has `unique(member_id, update_month)` plus an update-own policy limited to the current month — 3A requires "second submission edits, not duplicates".
+- `thank_you_messages` insert policy forces `status='pending'`, no reviewer fields, and `sponsor_id` must be null or the child's own sponsor — so a child can't self-approve or address another sponsor.
+- The 5MB/jpeg-png bucket limit also applies to admin uploads to `beneficiary-photos`.
+
+### Not verified
+
+- Not run against a real Supabase project yet. Please run it twice and check the 3.0 acceptance list (pg_tables RLS, anon insert with `status='approved'` rejected, anon upload outside `applications/` rejected). `types/database.ts` still needs the new tables added by hand (done alongside 3A).
+
+## Oct 6, 2026 — Ticket 2G: Content Management (closes out Phase 2)
+
+Built the story and announcement authoring tools — the last ticket in Phase 2 (2A–2G all delivered now).
+
+### A gap in the ticket's own prerequisites, flagged rather than silently worked around
+
+2G's CONTEXT states the public `/stories` page was "already built in Phase 1D." It wasn't — `app/(public)/stories/` is still an empty `.gitkeep` placeholder; only the landing page's `StoriesSection` component exists. This means the acceptance criterion "published stories correctly appear on the live public `/stories` page... verify end to end" can't actually be checked — that page doesn't exist to check against. Didn't build it here: a full public stories listing+detail page is Ticket 1D's scope, not this one, and improvising that design without being asked felt like the wrong call. Flagging it plainly instead — let me know if you'd like it built as a quick follow-up or kept for its own pass.
+
+### Delivered
+
+- **Story editor** (`stories/page.tsx`, `stories/new/page.tsx`, `stories/[id]/page.tsx`) — list with thumbnail/linked child/status, a shared create+edit form (title, excerpt, content, optional beneficiary link, photo upload), publish toggle, delete.
+- **Photo uploads go to `public-assets` only** — `createStory`/`updateStory` never reference `beneficiary-photos` at all, so there's no code path that could cross the two buckets' sensitivity levels. Stored as a path (`stories/{id}/filename.ext`), resolved to a public URL on read via `getPublicUrl`, same pattern the landing page already uses for stories today.
+- **Consent check before publish** — same pattern as Ticket 2F's project warning, sized down to one beneficiary instead of a list: `getStoryConsentWarning()` checks the linked beneficiary's original application for `consent_photography`, surfaced in the UI and **re-checked server-side** in `toggleStoryPublish` regardless of what the client confirmed.
+- **Delete removes the public-assets file(s) too** — best-effort (`storage.list` + `storage.remove` under `stories/{id}/`), wrapped so a storage-cleanup failure doesn't block deleting the row itself, matching the ticket's own "soft requirement" framing.
+- **Announcements** (`content/announcements/page.tsx`) — full list/create/edit/delete/publish-toggle in one page, superseding the quick broadcast-only form Ticket 2D added to the Members page for its own narrower purpose. Left that one in place rather than removing a previously-delivered feature nobody asked to retire — there are now two places to post an announcement (Members page: quick broadcast; Content page: full management), which is a bit redundant but each was built for what its own ticket asked for.
+- **`/dashboard/admin/content`** — a small hub page linking to Stories and Announcements, since the sidebar's "Content" nav item needed *something* there (not explicitly itemized by the ticket, same reasoning as the Projects list page added in 2F).
+
+### Not done (per the ticket's own DO NOT list)
+
+- No member dashboard announcement feed display — Phase 3 territory
+- No story or announcement content ever touches `beneficiary-photos`
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- **Not verified against real Supabase data** — same standing caveat as every ticket. Specifically worth checking: a story linked to a non-consenting beneficiary is actually blocked at publish, and that a published story's photo really does resolve via the public `public-assets` URL on the landing page's existing Stories section (the one real public surface this ticket can currently be checked against, until the `/stories` page gap above is addressed).
+
+## Oct 6, 2026 — Ticket 2F follow-up: standalone migration + query-level defense-in-depth
+
+### Migration convention change, applied retroactively
+
+Simon asked not to have to re-run all of `001_initial_schema.sql` for a two-policy fix, and to use numbered migration files (`002_...`, `003_...`, since `002_phase3_additions.sql` is reserved) for everything from here on — including this change itself. Reverted `001` back to its original policy text and moved the archive-RLS fix into its own file: **`supabase/migrations/003_projects_archive_rls.sql`**. This is the only thing that needs to be pasted into the Supabase SQL Editor:
+
+```sql
+drop policy if exists "projects_published_select" on public.projects;
+create policy "projects_published_select" on public.projects for select
+  using (is_published = true and status <> 'archived');
+
+drop policy if exists "project_beneficiaries_published_select" on public.project_beneficiaries;
+create policy "project_beneficiaries_published_select" on public.project_beneficiaries for select
+  using (exists (
+    select 1 from public.projects p
+    where p.id = project_beneficiaries.project_id
+      and p.is_published = true
+      and p.status <> 'archived'
+  ));
+```
+
+`001` is untouched from here on; any future schema change gets its own new numbered file.
+
+### Query-level check, not just RLS
+
+Simon asked to confirm the public landing page's Sponsor a Child query excludes archived/unpublished projects *in the query itself*, not only via RLS — it didn't. The query (`app/(public)/page.tsx`) was `project_beneficiaries.select('beneficiary_id')` with no filter at all, relying entirely on the RLS policy above to restrict which rows came back; the code comment said so outright.
+
+Added an explicit filter: first fetch `projects` where `is_published = true and status != 'archived'`, then filter `project_beneficiaries` to only those project ids. RLS still applies as the backstop — this is defense-in-depth on top of it, so the query stays correct even if it were ever run through a client that bypasses RLS (e.g. a service-role script written later without thinking this through).
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- Not verified against real Supabase data — please run `003_projects_archive_rls.sql` in the SQL Editor, then confirm an archived project's beneficiaries actually disappear from the live public landing page.
+
+## Oct 6, 2026 — Ticket 2F: Projects Module
+
+Built the fundraising projects module — creation, beneficiary attachment, publish/unpublish with a consent check, archive, and donation tracking.
+
+### A real RLS gap found and fixed before building this
+
+The ticket flags this directly: "archived projects should not show on the public site regardless of `is_published` (add this check if not already implied)." Checked — it wasn't implied. `projects_published_select` and `project_beneficiaries_published_select` (Ticket 1B) only ever checked `is_published = true`, never `status`. If a project were ever archived without also being unpublished (a future bug, a manual DB edit, anything), it would have stayed publicly visible through RLS regardless of what the admin UI showed.
+
+Fixed at the source — `supabase/migrations/001_initial_schema.sql` (this project's one evolving migration file, same convention as every prior schema fix this session): both policies now also require `status <> 'archived'`. **This needs the migration re-run in the Supabase SQL editor before the archive guarantee is real** — the application-side fix (`archiveProject` setting `is_published=false` too) is only defense-in-depth on top of it, not a substitute.
+
+### Delivered
+
+- **`app/dashboard/admin/projects/page.tsx`** + **`new/page.tsx`** — list (not explicitly itemized in the ticket, but needed since nothing else links anywhere) and a 5-field creation form (title, description, target amount, start/end date) that saves as `status='draft'`, `is_published=false`, then redirects into the detail page to do everything else.
+- **`app/dashboard/admin/projects/[id]/page.tsx`** — beneficiary attachment (picker restricted to beneficiaries not already on this project, each with its own `support_type`/`amount_needed`), publish/unpublish, archive, and donation history.
+- **Consent warning before publish**: `getConsentWarnings()` checks every attached beneficiary's *original application* for `consent_photography` (the same column `public_beneficiaries` already gates on) and surfaces names that would silently fail to appear. Shown in the UI before publish, and **re-checked server-side in `publishProject`** independent of whatever the client sent — confirming without the warning having actually been shown isn't possible.
+- **Archive**: sets `status='archived'` and `is_published=false` together, never one without the other.
+- **"Current amount"**: deliberately **not** read from `projects.current_amount` (nothing keeps that column in sync) — computed live via `SUM(donations.amount) WHERE project_id = X` instead, same fix as Ticket 2E's `sponsors.total_donated` for the same reason: a stored running total is one more place for drift, a `SUM` query never drifts.
+
+### Not done (per the ticket's own DO NOT list)
+
+- Didn't touch `public_beneficiaries` or its consent-gating logic — only strengthened the two RLS policies this ticket actually owns
+- Archived projects can't be published again through this UI (no "unarchive" exists — the ticket only describes archiving forward)
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- **Not verified against real Supabase data, and the RLS migration hasn't been re-run yet** — please re-run `001_initial_schema.sql` first (it's idempotent, safe to re-run), then test: create a project, attach a beneficiary who lacks photography consent and confirm the publish warning catches it, publish for real and check it shows up on the live public landing page's Sponsor a Child section, then archive it and confirm it disappears from the public page.
+
+## Oct 6, 2026 — Ticket 2E follow-up: donation logger defaults + mismatch confirmation + atomic total
+
+Three changes to the manual donation logger, all per Simon's spec.
+
+### 1. Default beneficiary to the sponsor's linked child
+
+`lib/admin/sponsors.ts`'s `buildSponsorListRows()` now tracks *how many* beneficiaries are linked to each sponsor, not just the first match (it was silently picking one via a `Map` overwrite before, with no way to know there'd been a collision). `linkedBeneficiaryId` is only populated when that count is exactly 1 — zero or multiple both leave it `null`, per spec ("if the sponsor has no linked child, or more than one, leave the field empty"). `getActiveSponsorOptions()` now carries this through to the donation form.
+
+`DonationLogger` picks the sponsor's linked child automatically the moment a sponsor is selected (or on open, when the sponsor is already locked from their profile page) — the admin can still clear or change it freely afterward.
+
+### 2. Confirmation when logging against a different child
+
+If the admin picks a beneficiary other than the sponsor's one unambiguous linked child, a warning replaces the submit button: *"This sponsor is linked to [Name]. Log this donation against [Other Name] anyway?"* with "Use [Name]" (reverts the pick) or "Yes, Log Anyway" (unlocks submit). Confirming appends a note to the donation's `notes` column recording exactly what happened, e.g. *"Logged against Jane Doe despite sponsor being linked to John Smith."*
+
+**Enforced server-side too**, independent of the client: `logDonation` re-queries the sponsor's actual linked beneficiaries itself (never trusts anything the client sent about the mismatch) and rejects the write with the same confirmation message if `confirmedMismatch` wasn't set. The client-side warning is UX; this is the actual gate.
+
+### 3. `sponsors.total_donated` — no longer read-then-write
+
+The original implementation read `total_donated`, added the new amount in JS, and wrote it back — two round trips, genuinely racy under concurrent writes (exactly what Simon asked me to confirm or fix). Rather than add a Postgres RPC for a true atomic increment (a migration, for one field), switched to recomputing it from source: after each donation insert, `SUM(amount) FROM donations WHERE sponsor_id = X` and write that sum directly. Self-correcting — even if two writes raced, the next donation logged against that sponsor recomputes the true total from scratch rather than compounding an error. No migration needed.
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- Not verified against real data — please test: a sponsor with exactly one linked child (should default + show no warning), a sponsor with zero or multiple linked children (should leave the field empty, never warn), and the mismatch flow end to end including checking the resulting `donations.notes` value.
+
+## Oct 6, 2026 — Bug fix: email links landed on a dead `/#access_token=...` fragment
+
+Simon diagnosed this precisely: Supabase's default email templates link to `{{ .ConfirmationURL }}`, which (with this project's implicit-flow-style config) redirects to `{{ .SiteURL }}/#access_token=...&type=...` — a URL fragment, which never reaches the server at all, and nothing on this site was reading `window.location.hash` either. Every email-based auth flow (signup confirmation, password reset) was silently broken.
+
+### Built (code side)
+
+- **`app/auth/confirm/route.ts`** — new Route Handler. Reads `token_hash`/`type` from the query string, calls `supabase.auth.verifyOtp({ token_hash, type })` (server client, so the resulting session lands in cookies), then redirects: `recovery` → `/reset-password`; anything else (signup confirmation) → straight to the user's dashboard or `/pending`, reusing the exact same role/status redirect logic `signIn()` already uses, since `verifyOtp` already leaves them authenticated — no reason to force a second manual sign-in.
+- **`app/(auth)/forgot-password/page.tsx`** — replaced the "not available yet" placeholder from the Ticket 1C follow-up with a real form. Submits to `requestPasswordReset()` (`lib/auth/password-actions.ts`), which calls `supabase.auth.resetPasswordForEmail()`. Always shows the same "check your email" success state regardless of whether the address is registered — Supabase itself never reveals that, so there's nothing to leak either way.
+- **`app/(auth)/reset-password/page.tsx`** — handles **two different arrival paths**, because they hand off sessions differently:
+  1. Via `/auth/confirm` (the email-template flow) — session already in cookies, page just checks `getUser()` and shows the form.
+  2. Via `admin.auth.admin.generateLink()` (used by Ticket 2B's approval email) — Supabase's hosted link redirects straight here with the session in a `#access_token=...&refresh_token=...` fragment, which **only a browser can read**. A `useEffect` parses the fragment, calls the browser client's `setSession()` to put it in cookies (matching what the server-side flow produces), then strips the fragment from the URL.
+  
+  Either way, the actual password update goes through `resetPassword()` (`lib/auth/password-actions.ts`), a Server Action that re-checks for an authenticated user server-side before calling `supabase.auth.updateUser({ password })` — the client-side session dance only gets the cookie in place, it's never trusted to prove who's calling the server action.
+- **`lib/admin/applications-actions.ts`**: the Ticket 2B approval email's `generateLink({ type: "recovery" })` call now passes `options.redirectTo` pointing at `/reset-password`, per path 2 above.
+- **`app/(auth)/login/page.tsx`**: added handling for `?error=` query params (`invalid_link`, plus the pre-existing `account_inactive`/`account_suspended` from `proxy.ts`, which — flagging this separately — were already being set on redirect but had never actually been displayed anywhere until now). Needed its own small `<Suspense>`-wrapped subcomponent since `useSearchParams()` forces that in a page that would otherwise prerender statically.
+
+### Needs manual action in the Supabase dashboard — cannot be done from this repo
+
+Two of the four things asked for live in Supabase's hosted config, not in code, and there's no local Supabase instance here (no Docker, as flagged throughout this project) to manage them via CLI config files either:
+
+1. **Email templates** (Authentication → Email Templates in the Supabase dashboard):
+   - **Confirm signup** — change the link to: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup`
+   - **Reset Password** — change the link to: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`
+   
+   (Replace whatever currently uses `{{ .ConfirmationURL }}` with the above.)
+2. **Redirect URLs** (Authentication → URL Configuration): add `http://localhost:3000/**` (and later, the production domain) to the allow-list — Supabase rejects redirects to hosts/paths not on this list, which would otherwise block both `/auth/confirm` and the `generateLink` → `/reset-password` path.
+
+Everything else (the route handler, both pages, the two Server Actions) is done and will work correctly once those two dashboard settings are in place — they're the missing link between "Supabase sends an email" and "that email's link lands somewhere that works."
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- **Not verified end-to-end** — this fundamentally can't be exercised without the dashboard changes above being live first. Once those are set: test signup confirmation, "forgot password" → reset, and the Ticket 2B approval email's recovery link, in that order.
+
+## Oct 6, 2026 — Ticket 2E: Sponsor Management
+
+Built sponsor management — table, profile view, activation flow, manual donation logging, and receipt sending.
+
+### Another real gap found before building this: `signUpSponsor` never created a `sponsors` row
+
+Same bug class as Ticket 2D's member-signup gap, different table. `signUpSponsor` (Ticket 1C) only ever created the Supabase Auth user — it never inserted into `sponsors`, even though that table has no public/self insert policy (by design) and the mentor signup flow had already solved this exact problem for its own table. Ticket 2E's activation flow ("sets status='active' on the sponsor's profile and sets sponsor_id on... the sponsors row") has nothing to activate without a `sponsors` row existing in the first place.
+
+Fixed `signUpSponsor` to mirror `signUpMentor`'s exact idempotent check-then-insert pattern (service-role client, check for an existing row by `profile_id` before inserting, so a retry after a partial failure doesn't get stuck on a unique-constraint error forever). Every sponsor who signs up through the form is a long-term sponsor by definition — one-time donors never create an account at all, they're just logged by an admin via the new donation form with no `sponsor_id` — so the new row sets `sponsorship_type: 'long_term'` directly, no admin input needed for that part.
+
+### A spec-wording discrepancy, resolved by what the schema actually supports
+
+The ticket's activation step says to set "sponsor_id on both the sponsors row and the linked beneficiaries row." The `sponsors` table has no `sponsor_id` column (it wouldn't make sense — `sponsors.id` already *is* the sponsor's id) and no column at all pointing at a beneficiary. The real, and only necessary, write is `beneficiaries.sponsor_id = sponsors.id` — a one-directional FK already in the Ticket 1B schema. "Linked beneficiary" everywhere in this ticket (the table column, the profile card) is computed by reverse lookup (`beneficiaries where sponsor_id = ?`), not a second stored pointer. Implemented it as the one update this actually requires, not two.
+
+### Delivered
+
+- **`app/dashboard/admin/sponsors/page.tsx`** — table (name, email, phone, linked beneficiary, total donated, status), filters for status and `sponsorship_type`. "Log Donation" button at the top opens the donation form as a modal.
+- **`app/dashboard/admin/sponsors/[id]/page.tsx`** — personal details, linked-beneficiary card (now a real link to the Ticket 2C beneficiary profile, since that page exists), full donation history, and the activation panel when `status='pending'`.
+- **Activation**: re-checks `beneficiaries.sponsor_id is null` at write time (not just trusting the dropdown only listed unsponsored children when the page loaded) — the update is conditioned on that check and returns a clear error if someone else claimed the same child in between. Satisfies "a beneficiary cannot be linked to two sponsors simultaneously" at the database-write level, not just the UI.
+- **Donation logger**: works with or without a `sponsor_id` (one-time donors have none); when one is set, increments `sponsors.total_donated` by the logged amount. Available both globally (unlinked by default) and locked to a specific sponsor from their profile page.
+- **Receipt sender**: marks `receipt_sent`/`receipt_sent_at` and sends via the same `sendEmail` stub-or-real helper from Ticket 2B. Refuses (with a clear error, not a silently-false "sent") if the donation has no donor email on file — logging a sent receipt against nobody would be worse than just not sending one.
+
+### Not done (per the ticket's own DO NOT list)
+
+- No sponsor-facing dashboard/portal — admin-side only
+- No Paystack or any payment gateway — this is bank-transfer-confirmed-by-email only, logged by hand
+- `total_donated` increment is a read-then-write, not an atomic DB increment — fine at this admin-only, low-concurrency scale, but worth knowing if donation logging ever becomes high-volume or multi-admin-concurrent
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- **Not verified against real Supabase data** — same standing caveat as every ticket so far. In particular: sign up a *new* test sponsor (old ones won't have a `sponsors` row from before this fix), confirm activation really blocks double-linking a beneficiary, and confirm `total_donated` actually increments correctly.
+
+## Oct 6, 2026 — Ticket 2D follow-up: Announcement form as a modal
+
+`components/admin/members/announcement-form.tsx` was an always-visible card sitting beside the members table; now it's a "Post Announcement" button at the top of `app/dashboard/admin/members/page.tsx` (next to the page heading) that opens a `Dialog`, same pattern as the Applications/Beneficiaries action dialogs. Submitting closes the modal and resets the fields; the table now gets the page's full width instead of sharing it with a side panel.
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- Not verified in a browser.
+
+## Oct 6, 2026 — Ticket 2D follow-up: Trustee Role as a validated dropdown
+
+Simon asked for the member activation form's free-text Trustee Role field to become a fixed dropdown instead.
+
+- **`lib/validations/auth.ts`**: added `TRUSTEE_ROLES` (Chairman, Secretary / Legal, Care & Welfare, Education & Programs, Spiritual & Chaplaincy, Outreach & Partnerships, Communications, Finance & Administration, Health & Medical) and `trusteeRoleSchema = z.enum(TRUSTEE_ROLES)` — the one place this list is defined, same pattern as `COMMITTEE_PREFERENCES` right above it.
+- **`components/admin/members/member-assignment-panel.tsx`**: the Trustee Role field is now a `Select` built off `TRUSTEE_ROLES`, still only rendered when Member Type is Trustee.
+- **`lib/admin/members-actions.ts`**: both `activateMember` and `updateMemberAssignment` now validate `trusteeRole` against `trusteeRoleSchema` server-side before writing — the dropdown only constrains what the browser sends, not what a direct request could send, so the server check is the real gate, matching how every other write in this app treats client-side constraints as a convenience, not a guarantee.
+- `profiles.trustee_role` stays `text`, unchanged — no migration, exactly as asked. The enum lives in application code, not a Postgres check constraint.
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- Not verified in a browser.
+
+## Oct 6, 2026 — Ticket 2D: Member Management
+
+Built member/trustee management — table, activation flow, committee/type editing, and announcement broadcast.
+
+### A real gap found before building this: signup data was never saved
+
+Ticket 2D's spec says the member detail view must show "their full sign-up data (occupation, reason for joining, committee preference from signup)." Checked `signUpMember` (Ticket 1C) to see where that lives — it didn't live anywhere. The signup form validates all three fields, but `signUpMember` only ever forwarded `full_name`/`phone`/`role` to Supabase; `occupation`, `committee_preference`, and `reason_for_joining` were collected and then silently dropped on the floor. Every member who's signed up so far has none of this recoverable.
+
+Fixed it the way that didn't need a schema migration: `profiles` has no columns for these (and `handle_new_user()` wouldn't populate them even if it did), so they now go into Supabase Auth `user_metadata` alongside the fields that already flow through that path (`full_name`, `phone`, `role`). `lib/admin/members.ts`'s `getSignupReference()` reads them back via the service-role client's `auth.admin.getUserById()` — display-only reference info, never queried or filtered on, so there's no need to promote them into real columns. Members who signed up *before* this fix still won't have this data recoverable (it was never captured) — only new signups from here on will show it.
+
+### Delivered
+
+- **`app/dashboard/admin/members/page.tsx`** — `DataTable` of everyone with `role='member'`: name, email, type (Trustee/Member badge), committee, status. Filters for type, committee (the real 9 from `COMMITTEE_PREFERENCES`), and status.
+- **`app/dashboard/admin/members/[id]/page.tsx`** — sign-up reference panel (occupation/committee preference/reason for joining, read-only) next to the assignment panel (member type, committee, trustee role — trustee role only shown when type is Trustee).
+- **Activate**: sets `status='active'` plus whatever member_type/committee/trustee_role the admin picked, sends an approval email (stubbed without `RESEND_API_KEY`, same as Tickets 2B's pattern).
+- **Deactivate**: sets `status='inactive'` — relies entirely on the existing `proxy.ts` logic to actually lock them out (nothing new needed there; `proxy.ts` already redirects non-active dashboard visitors to `/login?error=account_inactive`).
+- **Change committee/type on an active member**: separate `updateMemberAssignment` action, doesn't touch `status` — works without deactivating first, per spec.
+- **Announcement broadcast**: on the members list page (simple title+content form), inserts `is_published=true` with `published_at=now()`.
+- Also allowed "Activate" to apply to `inactive` members, not just `pending` ones — the ticket only describes pending→active, but gave no way to undo a deactivation otherwise. Reasonable extension, flagging it since it's not literally in the spec.
+
+### Self-escalation trigger — confirmed untouched
+
+Didn't modify `prevent_profile_privilege_escalation()` from Ticket 1B at all. Every write in this ticket (`activateMember`, `deactivateMember`, `updateMemberAssignment`) goes through the regular authenticated client as the acting admin, who the trigger already exempts — non-admins still have no path to touch their own `role`/`status`/`member_type`/`trustee_role`/`committee` through this or any other code path.
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- **Not verified against real Supabase data** — same standing caveat as every ticket needing a live run-through. In particular: sign up a *new* test member after this fix (not an old one) to confirm the sign-up reference panel actually shows data, and confirm a deactivated member really does get bounced by `proxy.ts` on their next dashboard visit.
+
+## Oct 6, 2026 — Bug fix: "Mentor" links 404'd (`/mentor` was never built)
+
+Same bug class as the earlier "Become a Member" fix: `app/(public)/mentor/` is an empty placeholder folder (just `.gitkeep`, no `page.tsx`), but 6 places across the public site linked to `/mentor` as if it were a real page — `navbar.tsx`, `footer.tsx`, `get-involved.tsx`, `how-it-works.tsx`, and twice in `mentorship-section.tsx` ("Become a Mentor" and "Learn More").
+
+Fixed each by what it actually meant to do, not with one blanket redirect:
+- **Signup CTAs** ("Become a Mentor" cards/buttons in `get-involved.tsx`, `how-it-works.tsx`, and `mentorship-section.tsx`) now point to `/signup/mentor` — the real, working form.
+- **Navigational links** (navbar, footer "Mentor" entries) now point to `/#mentor` — added `id="mentor"` to `MentorshipSection` (matching the pattern `SponsorSection`/`DonateSection` already used) so these scroll to the real on-page section instead of hitting a dead route.
+- `mentorship-section.tsx`'s "Learn More" button also now goes to `/signup/mentor`, for lack of anywhere better — there's no dedicated mentor-info page, and the mentorship section itself (which "Learn More" sits inside) already shows everything there is to show. Flagging this one specifically: it's a reasonable stopgap, not a great answer — if a real info page gets built later, that button should point there instead.
+
+### Flagging the broader pattern (not fixed here)
+
+This is not just a mentor-page problem. `app/(public)/sponsor/`, `/donate/`, `/programmes/`, `/about/`, `/contact/`, `/stories/`, and `/apply/` are **all** empty placeholder folders — same as `/mentor` and `/member` were. Several nav/footer/CTA links across the site point at them right now and will 404 exactly the same way:
+- `navbar.tsx`'s "Sponsor a Child" nav link → `/sponsor` (dead; `SponsorSection` already has `id="sponsor"` on the homepage, so this is the same one-line fix)
+- `navbar.tsx`'s "Donate" nav link → `/donate` (dead; `DonateSection` already has `id="donate"`, same fix)
+- `get-involved.tsx`'s "Sponsor Now" button → `/sponsor` (dead; arguably should go to `/signup/sponsor` instead, same reasoning as the mentor card)
+- "Programmes" and "Stories" nav links have no real page **or** anchor to fall back to yet — `ProgrammesSection`/`StoriesSection` don't have `id`s the way Sponsor/Donate/Mentor do
+- "About" and "Contact" have no equivalent content anywhere on the site yet — these aren't a one-line anchor fix, they're genuinely unbuilt
+
+Only fixed the Mentor links here since that's what was actually reported — didn't want to silently make a larger sweep of changes without you knowing the same issue exists elsewhere. Let me know if you'd like the Sponsor/Donate links fixed the same way now (quick), versus Programmes/Stories/About/Contact treated as their own follow-up (needs either new anchors+ids or actual pages, more of a judgment call each).
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- Not verified in a browser — please click through the fixed Mentor links to confirm the anchors land on the right section.
+
+## Oct 6, 2026 — Ticket 2C: Beneficiary Management
+
+Built the full beneficiary record system — table, profile view, stage management, mentor assignment, intervention logging, and document uploads.
+
+### Delivered
+
+- **`app/dashboard/admin/beneficiaries/page.tsx`** — `DataTable` with photo (signed thumbnail), name, age, stage badge, sponsor/mentor status, last updated. Filters for stage, support needed, sponsor status, mentor status, and state of origin (state options are derived from whatever's actually in the data, not a hardcoded list of Nigerian states that might not match).
+- **`app/dashboard/admin/beneficiaries/[id]/page.tsx`** — photo (signed URL, 1-hour expiry, regenerated on every load — never a public URL), stage badge, Move Stage button. **Reused `ApplicationDetailSections` directly from Ticket 2B** by fetching the beneficiary's linked `applications` row via `application_id`, rather than duplicating that section layout — this is what "reuse the same section layout... where possible" meant in practice, since beneficiaries and applications aren't the same shape. Falls back to a plain message if a beneficiary somehow has no linked application.
+- **Stage management**: `updateBeneficiaryStage` inserts a `progress_updates` row (`title: "Stage updated to X"`, the admin's note as `content`) and updates `current_stage`/`stage_updated_at` together.
+- **Mentor assignment**: creates a `mentorship_matches` row with `status='pending_consent'` — never touches `beneficiaries.mentor_id` directly, per the ticket's own explicit rule (mirrors the same choice made in Ticket 2B's approve-flow mentor pick). Added a light guard against creating a second pending/active match for the same beneficiary. If `mentor_id` *is* already set (confirmed, post-consent), the profile shows a linked-mentor card instead of the assignment form.
+- **Intervention logger**: logs to `interventions` with `given_by` = the acting admin; new entries show up in Support History immediately via `router.refresh()`.
+- **Document uploader**: validates file type (`jpg`/`png`/`pdf`) and size (5MB) both client-side (before upload) and server-side (in the Server Action, independent of whatever the client checked). Uploads land at `{beneficiary_id}/filename.ext` in `documents` or `certificates` per the required convention, and the list view reads back signed URLs the same way.
+- **`components/admin/data-table.tsx`**: small backward-compatible enhancement — a filter's `accessor` can now return `string[]` (matched via "contains") instead of only a single string, needed for `support_needed`'s multi-tag filtering. Existing single-string filters elsewhere are unaffected.
+
+### A real bug this surfaced: Server Action upload size limit
+
+Next.js caps Server Action request bodies at **1MB by default** — the ticket's own 5MB file-size requirement would have silently failed (a generic body-too-large error) for anything over 1MB without a config change. Raised `experimental.serverActions.bodySizeLimit` to `"6mb"` in `next.config.ts` (5MB file + headroom for multipart overhead, per Next's own docs guidance). Caught this by reading the Next docs for Server Action file uploads before wiring the uploader — not something a build or lint pass would have caught, since the error only happens at request time with a large-enough file.
+
+### Not done (per the ticket's own DO NOT list)
+
+- No real-time messaging UI — recent messages are a plain read-only list
+- No mentor consent flow (signatures, guardian approval) — just the pending-match record
+- `public_beneficiaries` view is never queried anywhere in this module — only the real `beneficiaries` table
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- **Not verified against the real Supabase project** — same standing caveat as every ticket so far needing live data: stage changes, mentor assignment, intervention logging, and especially the document uploads (path convention, signed URL retrieval, and the 5MB limit fix above) all need a real run-through before this is done. Please test with a beneficiary that has a linked application, at least one intervention, and try uploading a file close to 5MB to confirm the size-limit fix actually works.
+
+## Oct 6, 2026 — Pointer cursor on every button
+
+Browsers default `<button>` to `cursor: default`, not `cursor: pointer` — Tailwind's preflight reset doesn't change that, so every button in the app (shadcn `Button`, `DataTable`'s sort/pagination controls, dialog buttons, the career quiz's option buttons, etc.) showed the plain arrow cursor on hover instead of a hand. Added one global rule to `app/globals.css`'s `@layer base`: `button:not(:disabled) { cursor: pointer }`. Covers every real `<button>` element app-wide in one place rather than patching `className` on each one individually. Links already get the hand cursor natively, so `Button` instances rendered `render={<Link .../>}` needed no change.
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- Not verified in a browser — purely cosmetic, low-risk.
+
+## Oct 6, 2026 — Flagged applications can be approved/rejected again
+
+Previously, once an application hit `status='flagged'`, it was a dead end — `ApplicationActions` only rendered for `status='pending'`, and the Approve/Reject Server Actions rejected anything that wasn't pending. There was no way to actually resolve a flagged application.
+
+- `components/admin/applications/application-actions.tsx`: the action bar now renders for `status` of `'pending'` **or** `'flagged'`. "Flag for Follow-up" itself stays pending-only (re-flagging an already-flagged application isn't a meaningful action) — only Approve and Reject show up on a flagged one.
+- `lib/admin/applications-actions.ts`: `approveApplication` and `rejectApplication` both now accept `'pending'` or `'flagged'` in their server-side status check — this is the authoritative gate, not just the UI hiding buttons. `flagApplication`'s own check is untouched (still pending-only), matching the UI change.
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- Not verified against real data — would need a flagged application in the real project to click through.
+
+## Oct 6, 2026 — Bug fix: approved beneficiaries stuck on /pending
+
+Simon tested the Ticket 2B approve flow end-to-end against the real Supabase project and found it: login worked (greeted "Test Child" correctly — name, beneficiary row, and Auth account all created fine), but `profiles.status` was still `'pending'`, so `proxy.ts` bounced the newly-approved guardian to `/pending` instead of their dashboard.
+
+Root cause: `handle_new_user()` (Ticket 1B) always creates a new profile as `status='pending'`, unconditionally — it has no way to know "this particular signup is an admin-approved beneficiary account, not a self-service signup awaiting review." `approveApplication` created the Auth user and the `beneficiaries` row correctly, but never went back and flipped the resulting profile to active.
+
+### Fixed (`lib/admin/applications-actions.ts`)
+
+- After the `beneficiaries` insert succeeds, `approveApplication` now explicitly updates that profile to `status='active', role='beneficiary'`. (`role` was already being set correctly via `user_metadata` at `createUser` time — this just makes `status` match, and makes `role` explicit/idempotent rather than relying solely on the trigger.) Covered by the existing `profiles_admin_update_all` RLS policy and the admin-exempt privilege-escalation trigger from Ticket 1B — no policy changes needed.
+- **Password-setup link**: `createUser` never sets a password, so there was no real way for the guardian to actually sign in — the approval email just said "you'll receive a separate link" without ever sending one. Now calls `admin.auth.admin.generateLink({ type: "recovery", email })` right before sending the approval email and includes the real `action_link` in it. If link generation fails, the email still sends with the old fallback copy rather than blocking the whole approval (the DB writes already succeeded by that point).
+
+### Not done
+
+Did not run the one-off SQL Simon already wrote for the existing test user (`osimesimon+test1@gmail.com`) — that's a direct data fix for test data already in the live project, not a code change, and Simon has the exact statements to run himself. Let me know if you'd like me to run it instead.
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- **Not verified against the real Supabase project** — same standing caveat as the rest of Ticket 2B. Please re-run the approve flow end-to-end (a fresh pending application, not the already-patched test user) and confirm the new login lands on `/dashboard/beneficiary` (which will still 404 until Ticket 3C — that 404 is success, same as Simon noted) rather than `/pending`.
+
+## Oct 6, 2026 — Auth hero logo: icon + real text, matching the admin sidebar
+
+Simon asked for the login/signup hero panel to use the same pattern as the admin sidebar: the lightbulb icon mark plus real text, instead of the full logo-lockup image. `components/forms/auth-card.tsx`'s hero now shows `tace-icon.png` at `size-10`/`size-12` next to real `<span>` text ("TACE Foundation" / "Guiding Children Toward Independence", white with a drop-shadow for legibility over the photo) — same structure as the admin sidebar header, not an image with the words baked in.
+
+This also makes the earlier `tace-white.png` swap moot for this one spot, since there's no "Foundation" text in an image here anymore to recolor — it's living text now.
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- Not verified in a browser.
+
+## Oct 6, 2026 — Logo: "Foundation" white on dark backgrounds, black on light
+
+Simon asked for just the "Foundation" word in the logo to flip to white wherever the logo sits on a dark background, staying black on white/light backgrounds — not the whole logo inverted (that was the earlier, since-reverted approach).
+
+Since the logo is a single flattened PNG, there's no way to recolor one word in CSS without affecting the rest of the image. Used `sharp` to generate a second asset, `public/images/tace-white.png`: every near-black pixel (`r,g,b < 70`) gets flipped to white, leaving the blue "TACE", the blue tagline, and the multicolor lightbulb icon untouched, since none of those are anywhere near black. Verified by compositing it over a navy swatch before wiring it in.
+
+Wired the white-text variant into every spot where the logo sits on a dark background:
+- `components/public/footer.tsx` — always dark
+- `components/forms/auth-card.tsx` hero panel — always a dark photo
+- `components/public/navbar.tsx` mobile drawer — always dark
+- `components/public/navbar.tsx` desktop logo — now **dynamic**: swaps between `tace.png` (black "Foundation") and `tace-white.png` based on the existing `scrolled` state, same condition already driving the rest of the navbar's light/dark styling
+
+The admin sidebar wasn't touched — it dropped the full logo image back in the last change and now shows the lightbulb icon plus real `<span>` text, which is already literally `text-white` in code, not a recolor-the-image problem.
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- Composited the white-text variant over a navy background before committing to it (shown in-session) — legible and clean
+- Not verified in an actual browser — particularly the navbar's scroll transition between the two logo images, since that's the one place this swaps dynamically rather than being fixed per-component.
+
+## Oct 6, 2026 — Admin sidebar header: reverted to badge+text, swapped "T" for the lightbulb icon
+
+First pass (above) replaced the whole sidebar header with the full logo lockup image — Simon said that didn't look right. Reverted to the original badge-plus-text layout, but swapped the plain blue "T" badge for the actual lightbulb icon mark (the same crop used for the favicon, saved as `public/images/tace-icon.png`) instead of a letter. Text stays as real text ("TACE Foundation" / "Guiding Children Toward Independence"), not baked into an image.
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- Not verified in a browser — please check this reads better than both prior attempts.
+
+## Oct 6, 2026 — Favicon from the logo's lightbulb mark
+
+Simon asked for a favicon made from just the "TACE" icon (the lightbulb mark), not the full logo lockup with the wordmark/tagline. Used `sharp` (already a transitive dependency via Next's image optimization — no new package installed) to crop the icon out of `public/images/tace.png`, pad it onto a square transparent canvas, and render it at each size Next.js's static icon convention expects.
+
+- `app/favicon.ico` — replaced the default Next.js icon with a hand-packed ICO (PNG-in-ICO, the modern format every current browser supports) containing 16×16, 32×32, 48×48
+- `app/icon.png` (512×512) and `app/apple-icon.png` (180×180) — added; Next's App Router picks these up automatically and injects the right `<link>` tags, no layout/metadata code changes needed
+- Deleted the temporary cropping/packing scripts after use — nothing extra left in the repo
+
+### Verified
+
+- `npm run build` — clean; `/icon.png` and `/apple-icon.png` both show up as static routes
+- Visually checked the cropped icon at 32px and 180px before committing to it
+- Not verified in an actual browser tab — please confirm it looks right there; favicons can be cached aggressively, so a hard refresh (or a new private window) may be needed to see it update
+
+## Oct 5, 2026 — Ticket 2B: Applications Module
+
+Built the beneficiary application review and approval system.
+
+### Delivered
+
+- **`app/dashboard/admin/applications/page.tsx`** — real data from `applications` via the regular authenticated client (RLS's `applications_admin_all` policy applies), rendered through the shared `DataTable` from Ticket 2A. Sortable by child name / date submitted, filterable by status and applicant type, row click → detail view.
+- **`app/dashboard/admin/applications/[id]/page.tsx`** — all 10 form sections (`ApplicationDetailSections`), Guardian vs Organisation rendered conditionally on `applicant_type` (never both), the 5 consent checkboxes shown as confirmed/not-confirmed with declarant name and timestamp, and a separate Admin Notes panel that saves on blur or via its own button.
+- **Approve flow** (`approveApplication` Server Action in `lib/admin/applications-actions.ts`): confirm-current-stage + optional mentor dropdown modal, then in order — (1) `createAdminClient().auth.admin.createUser()` with the guardian's or (for `applicant_type='self'`) the child's own email, `role: 'beneficiary'` in `user_metadata` so `handle_new_user()` creates the right profile, (2) insert the `beneficiaries` row mapping every matching field from the application and linking `application_id`, (3) update the application to `status='approved'`, `reviewed_by`, `reviewed_at`. `tace_id` is left untouched — the Ticket 1B trigger generates it on insert.
+- **Reject flow**: modal requires a reason, writes it to `admin_notes`, sets `status='rejected'`, `reviewed_by`, `reviewed_at`.
+- **Flag flow**: appends a `[Flagged] ...` note to `admin_notes`, sets `status='flagged'`.
+- All three actions re-check `status === 'pending'` **server-side** inside the Server Action (not just by hiding the buttons client-side) before mutating, and `requireRole("admin")` runs at the top of every action as defense-in-depth alongside `proxy.ts`'s existing gate.
+- **Email**: `lib/email/send.ts` uses the `resend` package (already in `package.json`, never installed by me) — sends for real if `RESEND_API_KEY` is set, otherwise logs what would've been sent. Approve and Reject both call it; Flag doesn't send anything (ticket didn't ask for it). Sender address is `onboarding@resend.dev` (Resend's no-setup sandbox address) as a placeholder — swap for a verified TACE domain address once one exists in the Resend dashboard.
+- Mounted `<Toaster />` (Base UI's toast primitive, already scaffolded in `components/ui/toast.tsx` but never wired up) at the root layout so `toast.add(...)` has somewhere to render — used for the approve/reject/flag success and notes-saved confirmations.
+
+### One judgment call, flagged here
+
+The ticket's approve-modal spec says "optional mentor assignment dropdown" but doesn't say what selecting one actually *does* on confirm — and Ticket 2C (not yet built) establishes that mentor assignment must create a `mentorship_matches` row with `status='pending_consent'`, explicitly **not** set `beneficiaries.mentor_id` directly, since consent hasn't happened yet. To avoid building a path in 2B that contradicts 2C's own rule, picking a mentor during approval now creates that same pending-consent match row rather than setting `mentor_id`. Flagging this since it's an interpretation, not something the ticket text states outright.
+
+### Not done (per the ticket's own DO NOT list)
+
+- No public `/apply` form (Phase 3)
+- No interest-based mentor matching — the dropdown just lists every mentor whose linked profile is `status='active'`
+- Service-role client (`createAdminClient()`) is only ever called inside the Server Action file, never passed to or imported by a client component
+
+### Verified
+
+- `npm run build` / `npm run lint` — clean
+- **Not verified against the real Supabase project** — the ticket's acceptance criteria explicitly call this out as the one that must be tested against real data, not just a build check: creating a real Auth user, a real `beneficiaries` row, and confirming `tace_id` auto-generates correctly. I don't have a way to drive a browser here, and the local dev server that was running earlier in this session isn't up anymore, so none of this has been exercised end-to-end yet. Please test the full approve/reject/flag flow against a real pending application before treating this ticket as done.
+
 ## Oct 4, 2026 — Ticket 1C follow-up #2: sticky hero, tabs, Remember me, forgot password, Google button
 
 Simon sent a screenshot of the rendered mockup and asked for (1) the left hero image to stay fixed while the right form panel scrolls, and (2) every piece of copy/UI visible in the screenshot that the first pass hadn't added yet: the Sign In/Create Account tabs, Remember me + Forgot password row, and Continue with Google.
