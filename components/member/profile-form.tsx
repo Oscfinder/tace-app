@@ -57,7 +57,7 @@ export function ProfileForm({
     });
   }
 
-  const labelClass = "text-sm font-medium text-tace-navy";
+  const labelClass = "text-sm font-bold text-m-ink";
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
@@ -67,11 +67,11 @@ export function ProfileForm({
           <img
             src={preview}
             alt="Your profile photo"
-            className="size-20 shrink-0 rounded-full object-cover"
+            className="size-20 shrink-0 rounded-full object-cover ring-4 ring-[#e5f6ff]"
           />
         ) : (
           <div
-            className="flex size-20 shrink-0 items-center justify-center rounded-full bg-tace-lgray text-2xl font-semibold text-tace-gray"
+            className="flex size-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#10b5e9] to-[#087cc5] text-2xl font-bold text-white"
             aria-hidden
           >
             {fullName.charAt(0).toUpperCase()}
@@ -143,7 +143,7 @@ export function ProfileForm({
       <Button
         type="submit"
         disabled={pending}
-        className="h-11 w-full text-base sm:w-auto sm:self-start sm:px-6"
+        className="h-11 w-full text-base sm:w-auto sm:self-start sm:px-6 bg-gradient-to-r from-m-blue to-m-blue2 text-white shadow-[0_8px_18px_#009de832] hover:opacity-95"
       >
         {pending ? "Saving..." : "Save changes"}
       </Button>

@@ -1,5 +1,14 @@
 # TACE Platform — Updates Log
 
+## Oct 14, 2026 — Member dashboard redesign (docs/tace_member_dashboard_v2.html)
+
+Rebuilt the member area on the v2 design: vibrant palette (blue / teal / purple / amber / pink on a pale-blue canvas), Manrope + DM Sans (loaded only in the member layout), gradient sidebar with active pill, "Your contribution matters" tip card and user block, topbar with breadcrumb, bell and profile chip, and white rounded panels with soft shadow. Palette tokens are `m-*` in `globals.css`; shared pieces (`Panel`, `Stat`, `Pill`, `ProgressRing`, `DarkBanner`, `DetailRow`, `DateBadge`, `IconTile`) live in `components/member/ui.tsx`.
+
+- **Home** follows the mock: welcome row, 3 stat cards, latest announcement + progress ring, recent activity, committee card, upcoming events, call-to-action. All real data.
+- **Every other page** (updates, impact, committee, events, campaigns, resources, profile) uses the same panels, stat cards, tiles and coloured buttons (no more default black buttons).
+- **Where the mock had placeholder numbers I used real ones:** the "62%" ring is a real monthly checklist (committee update sent, events responded to, profile complete); "Recent activity" is built from published announcements/stories and the member's own update.
+- **Not built:** the mock's topbar search box (it only filtered the home page's own panels, so it would be dead UI on other pages).
+
 ## Oct 14, 2026 — Email-link handling, Google sign-in, and a signup role-escalation fix
 
 ### Security fix (run `supabase/migrations/005_signup_role_hardening.sql`)

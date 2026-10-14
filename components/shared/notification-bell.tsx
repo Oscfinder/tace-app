@@ -53,11 +53,11 @@ export function NotificationBell({
         aria-label={
           unread > 0 ? `Notifications, ${unread} unread` : "Notifications"
         }
-        className="relative flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-border bg-white text-tace-gray outline-none hover:text-tace-navy focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="relative flex size-11 shrink-0 items-center justify-center rounded-xl border border-[#e4ebf3] bg-white text-[#506985] outline-none hover:text-[#079ce8] focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <Bell className="size-[18px]" />
         {unread > 0 ? (
-          <span className="absolute -top-1 -right-1 flex min-w-5 items-center justify-center rounded-full bg-tace-red px-1 text-[11px] font-bold leading-5 text-white">
+          <span className="absolute -top-1 -right-1 flex min-w-5 items-center justify-center rounded-full bg-[#ff6874] px-1 text-[11px] font-bold leading-5 text-white">
             {unread > 9 ? "9+" : unread}
           </span>
         ) : null}

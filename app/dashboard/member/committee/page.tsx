@@ -1,3 +1,4 @@
+import { Building2, CalendarDays, UserCheck } from "lucide-react";
 import {
   firstOfMonth,
   getCommitteeLead,
@@ -6,7 +7,17 @@ import {
   getNextCommitteeMeeting,
 } from "@/lib/member/queries";
 import { CommitteeUpdateForm } from "@/components/member/committee-update-form";
-import { Card, EmptyState, PageHeader, formatDate } from "@/components/member/ui";
+import {
+  DarkBanner,
+  DetailRow,
+  EmptyState,
+  IconTile,
+  PageHeader,
+  Panel,
+  Pill,
+  Stat,
+  formatDate,
+} from "@/components/member/ui";
 
 function monthLabel(isoDate: string) {
   return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString("en-NG", {
@@ -22,9 +33,15 @@ export default async function CommitteePage() {
 
   if (!profile || !committee) {
     return (
-      <div className="flex flex-col gap-6 pt-5">
-        <PageHeader title="My Committee" />
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          eyebrow="My committee"
+          title="Your team"
+          subtitle="Your committee, lead and monthly updates."
+        />
         <EmptyState
+          icon={Building2}
+          accent="teal"
           title="No committee yet"
           message="You haven't been placed on a committee. An admin will assign you soon, and your committee details will show up here."
         />
@@ -43,62 +60,101 @@ export default async function CommitteePage() {
   const earlier = updates.filter((u) => u.update_month !== thisMonth);
 
   return (
-    <div className="flex flex-col gap-6 pt-5">
-      <PageHeader title="My Committee" subtitle={committee} />
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        eyebrow="My committee"
+        title={committee}
+        subtitle="Your team, next steps and monthly update."
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <p className="text-sm text-tace-gray">Committee lead</p>
-          <p className="mt-1 font-semibold text-tace-navy">
-            {lead ?? "Not assigned yet"}
-          </p>
-        </Card>
-        <Card>
-          <p className="text-sm text-tace-gray">Next committee meeting</p>
-          <p className="mt-1 font-semibold text-tace-navy">
-            {nextMeeting
-              ? `${nextMeeting.title} — ${formatDate(nextMeeting.event_date, true)}`
-              : "None scheduled"}
-          </p>
-        </Card>
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Stat
+          label="Committee lead"
+          value={lead ?? "Not set"}
+          foot="Your point of contact"
+          icon={UserCheck}
+          accent="purple"
+        />
+        <Stat
+          label="Next meeting"
+          value={
+            nextMeeting?.event_date
+              ? new Date(nextMeeting.event_date).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                })
+              : "None"
+          }
+          foot={nextMeeting?.title ?? "Nothing scheduled"}
+          icon={CalendarDays}
+          accent="blue"
+        />
+        <Stat
+          label="This month's update"
+          value={current ? "Sent" : "Due"}
+          foot={monthLabel(thisMonth)}
+          icon={Building2}
+          accent={current ? "teal" : "amber"}
+        />
+      </section>
+
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(290px,0.9fr)]">
+        <Panel
+          title="Monthly update"
+          subtitle="One update per month — edit it any time before the month ends"
+        >
+          <CommitteeUpdateForm
+            key={current?.id ?? "new"}
+            monthLabel={monthLabel(thisMonth)}
+            initialContent={current?.content ?? ""}
+          />
+        </Panel>
+
+        <Panel title="Committee details" subtitle="Your team and next steps">
+          <DarkBanner
+            label="Your committee"
+            title={committee}
+            text="Helping build sustainable support for children."
+          />
+          <DetailRow label="Committee lead" value={lead ?? "Not assigned yet"} />
+          <DetailRow
+            label="Next meeting"
+            value={
+              nextMeeting ? formatDate(nextMeeting.event_date, true) : "None scheduled"
+            }
+          />
+          <DetailRow label="Location" value={nextMeeting?.location ?? "—"} />
+        </Panel>
       </div>
 
-      <Card>
-        <h2 className="font-heading text-base font-semibold text-tace-navy">
-          Monthly update
-        </h2>
-        <p className="mb-3 mt-1 text-sm text-tace-gray">
-          One update per month. You can edit it any time before the month ends.
-        </p>
-        <CommitteeUpdateForm
-          key={current?.id ?? "new"}
-          monthLabel={monthLabel(thisMonth)}
-          initialContent={current?.content ?? ""}
-        />
-      </Card>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="font-heading text-lg font-semibold text-tace-navy">
-          Earlier updates
-        </h2>
+      <Panel title="Earlier updates" subtitle="Your past monthly updates">
         {earlier.length > 0 ? (
-          earlier.map((u) => (
-            <Card key={u.id}>
-              <p className="text-sm font-semibold text-tace-navy">
-                {monthLabel(u.update_month)}
-              </p>
-              <p className="mt-1 whitespace-pre-line text-sm text-tace-gray">
-                {u.content}
-              </p>
-            </Card>
-          ))
+          <div>
+            {earlier.map((u) => (
+              <div
+                key={u.id}
+                className="flex gap-3 border-t border-[#eff3f7] py-4 first:border-t-0"
+              >
+                <IconTile icon={Building2} accent="amber" size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center gap-2">
+                    <strong className="text-[13px]">{monthLabel(u.update_month)}</strong>
+                    <Pill accent="teal">Sent</Pill>
+                  </div>
+                  <p className="text-[13px] leading-[1.65] whitespace-pre-line text-[#6d8199]">
+                    {u.content}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
-          <EmptyState
-            title="No earlier updates"
-            message="Your past monthly updates will be listed here."
-          />
+          <p className="py-6 text-center text-sm text-m-muted">
+            No earlier updates yet. Your past monthly updates will be listed
+            here.
+          </p>
         )}
-      </section>
+      </Panel>
     </div>
   );
 }

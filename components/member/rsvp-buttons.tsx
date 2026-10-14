@@ -39,22 +39,30 @@ export function RsvpButtons({
     <div className="flex gap-2" role="group" aria-label="RSVP">
       <Button
         type="button"
-        variant={status === "attending" ? "default" : "outline"}
+        variant="outline"
         aria-pressed={status === "attending"}
         disabled={pending}
         onClick={() => choose("attending")}
-        className="h-11 flex-1 sm:flex-none sm:px-5"
+        className={`h-11 flex-1 sm:flex-none sm:px-5 ${
+          status === "attending"
+            ? "border-transparent bg-gradient-to-r from-[#08b99c] to-[#20c4a8] text-white hover:opacity-95 hover:text-white"
+            : "border-[#bfeede] bg-[#e4fbf4] text-[#0a8f78] hover:bg-[#d4f6ec]"
+        }`}
       >
         <Check className="size-4" />
         Attend
       </Button>
       <Button
         type="button"
-        variant={status === "declined" ? "default" : "outline"}
+        variant="outline"
         aria-pressed={status === "declined"}
         disabled={pending}
         onClick={() => choose("declined")}
-        className="h-11 flex-1 sm:flex-none sm:px-5"
+        className={`h-11 flex-1 sm:flex-none sm:px-5 ${
+          status === "declined"
+            ? "border-transparent bg-gradient-to-r from-[#ec4f7b] to-[#f06a8f] text-white hover:opacity-95 hover:text-white"
+            : "border-[#ffd3df] bg-[#ffecf2] text-[#d63e69] hover:bg-[#ffdfe9]"
+        }`}
       >
         <X className="size-4" />
         Decline

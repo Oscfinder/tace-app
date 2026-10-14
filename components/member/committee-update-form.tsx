@@ -38,7 +38,7 @@ export function CommitteeUpdateForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
-      <label htmlFor="committee-update" className="text-sm font-medium text-tace-navy">
+      <label htmlFor="committee-update" className="text-sm font-bold text-m-ink">
         Your update for {monthLabel}
       </label>
       <textarea
@@ -50,7 +50,7 @@ export function CommitteeUpdateForm({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? "committee-update-error" : undefined}
         placeholder="What has your committee been working on this month?"
-        className="w-full rounded-lg border border-input bg-transparent px-3 py-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="w-full rounded-xl border border-m-line bg-[#fbfcfe] px-3.5 py-3 text-base outline-none focus-visible:border-[#89d3f5] focus-visible:ring-3 focus-visible:ring-[#0ba6e820]"
       />
       {error ? (
         <p id="committee-update-error" role="alert" className="text-sm text-tace-red">
@@ -60,7 +60,7 @@ export function CommitteeUpdateForm({
       <Button
         type="submit"
         disabled={pending || !content.trim()}
-        className="h-11 w-full text-base sm:w-auto sm:self-start sm:px-6"
+        className="h-11 w-full text-base sm:w-auto sm:self-start sm:px-6 bg-gradient-to-r from-m-blue to-m-blue2 text-white shadow-[0_8px_18px_#009de832] hover:opacity-95"
       >
         {pending ? "Saving..." : isEdit ? "Save changes" : "Submit update"}
       </Button>

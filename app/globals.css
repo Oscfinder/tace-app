@@ -17,6 +17,19 @@
   --color-tace-green: var(--tace-green);
   --color-tace-gray: var(--tace-gray);
   --color-tace-lgray: var(--tace-lgray);
+  /* Member dashboard palette (docs/tace_member_dashboard_v2.html) */
+  --color-m-navy: #071f3e;
+  --color-m-navy2: #0b3158;
+  --color-m-blue: #079ce8;
+  --color-m-blue2: #22b4f4;
+  --color-m-ink: #102746;
+  --color-m-muted: #6c819b;
+  --color-m-line: #e4ebf3;
+  --color-m-bg: #f3f7fc;
+  --color-m-teal: #08b99c;
+  --color-m-amber: #f6b83f;
+  --color-m-purple: #8872f5;
+  --shadow-m-card: 0 12px 35px rgba(16, 48, 83, 0.055);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -165,4 +178,16 @@
   .ticker-track {
     animation: none;
   }
+}
+
+/* Member dashboard typography: Manrope headings over DM Sans body. */
+.member-theme {
+  font-family: var(--font-dm-sans), var(--font-sans), sans-serif;
+  color: #102746;
+}
+.member-theme .m-head,
+.member-theme h1,
+.member-theme h2,
+.member-theme h3 {
+  font-family: var(--font-manrope), var(--font-heading), sans-serif;
 }

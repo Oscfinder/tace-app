@@ -1,46 +1,67 @@
-import { FileText } from "lucide-react";
+import { FileText, FolderOpen } from "lucide-react";
 import { getResources } from "@/lib/member/queries";
-import { Card, EmptyState, PageHeader } from "@/components/member/ui";
+import {
+  EmptyState,
+  IconTile,
+  PageHeader,
+  Panel,
+  type Accent,
+} from "@/components/member/ui";
+
+const CYCLE: Accent[] = ["blue", "teal", "purple", "amber", "pink"];
 
 export default async function ResourcesPage() {
   const groups = await getResources();
 
   return (
-    <div className="flex flex-col gap-6 pt-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
-        title="Resources"
-        subtitle="Foundation documents for members. Links expire after an hour."
+        eyebrow="Resources"
+        title="Foundation documents"
+        subtitle="Policies, templates and guides for members. Links expire after an hour."
       />
       {groups.length > 0 ? (
-        groups.map((g) => (
-          <section key={g.category} className="flex flex-col gap-3">
-            <h2 className="font-heading text-lg font-semibold capitalize text-tace-navy">
-              {g.category.replace(/[-_]/g, " ")}
-            </h2>
-            <Card className="!p-0">
+        <div className="grid gap-5 lg:grid-cols-2">
+          {groups.map((g, gi) => (
+            <Panel
+              key={g.category}
+              title={g.category
+                .replace(/[-_]/g, " ")
+                .replace(/\b\w/g, (c) => c.toUpperCase())}
+              subtitle={`${g.files.length} ${g.files.length === 1 ? "file" : "files"}`}
+            >
               <ul>
                 {g.files.map((f) => (
                   <li
                     key={f.name}
-                    className="border-b border-[#F1F3F6] last:border-b-0"
+                    className="border-t border-[#eff3f7] first:border-t-0"
                   >
                     <a
                       href={f.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex min-h-11 items-center gap-3 px-5 py-3 text-sm font-medium text-tace-navy hover:bg-tace-lgray"
+                      className="flex min-h-11 items-center gap-3 py-3 text-[13px] font-semibold hover:text-[#008fda]"
                     >
-                      <FileText className="size-4 shrink-0 text-tace-blue" />
-                      <span className="min-w-0 break-words">{f.name}</span>
+                      <IconTile
+                        icon={FileText}
+                        accent={CYCLE[gi % CYCLE.length]}
+                        size="sm"
+                      />
+                      <span className="min-w-0 flex-1 break-words">{f.name}</span>
+                      <span className="text-xs font-bold text-[#008fda]">
+                        Open ↗
+                      </span>
                     </a>
                   </li>
                 ))}
               </ul>
-            </Card>
-          </section>
-        ))
+            </Panel>
+          ))}
+        </div>
       ) : (
         <EmptyState
+          icon={FolderOpen}
+          accent="purple"
           title="No documents yet"
           message="Policies, templates and other foundation documents will be available here once an admin uploads them."
         />

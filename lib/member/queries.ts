@@ -139,6 +139,70 @@ export async function getNextCommitteeMeeting(
   return data;
 }
 
+export type ActivityItem = {
+  id: string;
+  kind: "announcement" | "story" | "update";
+  title: string;
+  text: string;
+  at: string;
+};
+
+// A small "what's happening" feed built only from things members may already
+// see: published announcements/stories and the member's own monthly update.
+export async function getRecentActivity(
+  memberId: string,
+): Promise<ActivityItem[]> {
+  const supabase = await createClient();
+  const [{ data: ann }, { data: stories }, { data: updates }] =
+    await Promise.all([
+      supabase
+        .from("announcements")
+        .select("id, title, published_at, created_at")
+        .eq("is_published", true)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .limit(2),
+      supabase
+        .from("stories")
+        .select("id, title, published_at, created_at")
+        .eq("is_published", true)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .limit(2),
+      supabase
+        .from("committee_updates")
+        .select("id, update_month, created_at")
+        .eq("member_id", memberId)
+        .order("created_at", { ascending: false })
+        .limit(1),
+    ]);
+
+  const items: ActivityItem[] = [
+    ...(ann ?? []).map((a) => ({
+      id: `a-${a.id}`,
+      kind: "announcement" as const,
+      title: "Foundation update published",
+      text: a.title,
+      at: a.published_at ?? a.created_at,
+    })),
+    ...(stories ?? []).map((s) => ({
+      id: `s-${s.id}`,
+      kind: "story" as const,
+      title: "New impact story shared",
+      text: s.title,
+      at: s.published_at ?? s.created_at,
+    })),
+    ...(updates ?? []).map((u) => ({
+      id: `u-${u.id}`,
+      kind: "update" as const,
+      title: "You submitted a committee update",
+      text: "Thank you for keeping your committee informed.",
+      at: u.created_at,
+    })),
+  ];
+  return items
+    .sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime())
+    .slice(0, 4);
+}
+
 // ── Announcements ───────────────────────────────────────────────────────
 
 export async function getAnnouncementsPage(page: number) {

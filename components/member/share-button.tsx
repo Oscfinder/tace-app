@@ -32,9 +32,9 @@ export function ShareButton({
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="default"
       onClick={handleShare}
-      className="h-11 px-4"
+      className="h-11 self-start border-transparent px-5 bg-gradient-to-r from-m-blue to-m-blue2 text-white shadow-[0_8px_18px_#009de832] hover:opacity-95 hover:text-white"
     >
       <Share2 className="size-4" />
       Share
