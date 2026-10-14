@@ -1,5 +1,12 @@
 # TACE Platform — Updates Log
 
+## Oct 14, 2026 — Ticket 3D fixes: real programmes and fixed tie-break
+
+- **Programmes:** the six real TACE programmes (Education Support, Vocational Training, Mentorship, Career Discovery, Enterprise Development, Community Outreach) are now defined once as `PROGRAMMES` in `lib/career/clusters.ts`; each cluster's `programme` is typed to that list. Mapping: Builder/Technical → Vocational Training, Creative → Vocational Training, People & Care → Mentorship, Analytical/Academic → Education Support, Business/Enterprise → Enterprise Development. (Community Outreach would also suit People & Care if you prefer; it's a one-word change.)
+- **Prompt:** Gemini now receives only the real programme name (`taceProgramme`) and is told never to name any other programme, workshop, course, scheme or initiative.
+- **Reply check** (`lib/career/narrative-check.ts`, provider-neutral): the narrative is discarded, and the static cluster description shown instead, if it names a programme-like phrase that isn't one of the six, or names a real programme that wasn't supplied for that child. Ordinary lowercase words like "mentorship" are fine, and "TACE Foundation" is not treated as a programme.
+- **Ties:** equal scores are broken by a fixed order — Analytical/Academic, Builder/Technical, People & Care, Creative, Business/Enterprise (`TIE_BREAK_ORDER`, used by `rankClusters`). Same answers always give the same result. Existing saved results are unchanged.
+
 ## Oct 14, 2026 — Ticket 3D: Career Discovery (AI-assisted)
 
 Built the quiz inside the beneficiary dashboard at `/dashboard/beneficiary/discover` (tab + home card, shown only to children aged 11+).

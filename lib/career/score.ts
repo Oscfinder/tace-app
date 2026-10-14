@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { CLUSTER_IDS, CLUSTERS, type ClusterId } from "@/lib/career/clusters";
+import {
+  CLUSTER_IDS,
+  CLUSTERS,
+  TIE_BREAK_ORDER,
+  type ClusterId,
+} from "@/lib/career/clusters";
 import { MAX_TEXT_LENGTH, QUESTIONS } from "@/lib/career/questions";
 
 // The quiz is for children aged 11 and over.
@@ -40,13 +45,25 @@ export const answersSchema = z.object(shape);
 
 export type ScoreResult = {
   scores: Record<ClusterId, number>;
-  /** Highest first. Ties are broken by the fixed order in CLUSTER_IDS. */
+  /** Highest first. Ties are broken by TIE_BREAK_ORDER. */
   topClusters: [ClusterId, ClusterId];
   mentorTrack: "career" | "tech";
   maxScore: number;
 };
 
 const CHOICE_POINTS = 2;
+
+/**
+ * Highest score first. Equal scores are ordered by TIE_BREAK_ORDER
+ * (Analytical, Builder, People & Care, Creative, Business) — never by chance.
+ */
+export function rankClusters(scores: Record<ClusterId, number>): ClusterId[] {
+  return [...CLUSTER_IDS].sort(
+    (x, y) =>
+      scores[y] - scores[x] ||
+      TIE_BREAK_ORDER.indexOf(x) - TIE_BREAK_ORDER.indexOf(y),
+  );
+}
 
 export function scoreAnswers(answers: Answers): ScoreResult {
   const scores = Object.fromEntries(CLUSTER_IDS.map((c) => [c, 0])) as Record<ClusterId, number>;
@@ -72,9 +89,7 @@ export function scoreAnswers(answers: Answers): ScoreResult {
     maxPerCluster = Math.max(maxPerCluster, max);
   }
 
-  const ranked = [...CLUSTER_IDS].sort(
-    (x, y) => scores[y] - scores[x] || CLUSTER_IDS.indexOf(x) - CLUSTER_IDS.indexOf(y),
-  );
+  const ranked = rankClusters(scores);
   const topClusters: [ClusterId, ClusterId] = [ranked[0], ranked[1]];
 
   return {
