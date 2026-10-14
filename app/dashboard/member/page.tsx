@@ -1,23 +1,40 @@
 import Link from "next/link";
 import {
+  Users,
+  CalendarDays,
+  HeartHandshake,
+  Megaphone,
+  Sparkles,
+  Building2,
+  FolderOpen,
+  UserCircle,
+  ArrowRight,
+} from "lucide-react";
+import { StatCard } from "@/components/admin/stat-card";
+import { QuickActionCard } from "@/components/admin/quick-action-card";
+import { WelcomeBanner } from "@/components/admin/welcome-banner";
+import { UpcomingEventsPanel } from "@/components/admin/upcoming-events-panel";
+import { getUpcomingEvents as getNextEvents } from "@/lib/admin/upcoming-events";
+import {
   getBeneficiaryCount,
   getCommitteeLead,
   getLatestAnnouncement,
+  getMemberCounts,
   getMemberProfile,
   getNextCommitteeMeeting,
-  getUpcomingEvents,
 } from "@/lib/member/queries";
-import { Card, EmptyState, PageHeader, formatDate } from "@/components/member/ui";
+import { formatDate } from "@/components/member/ui";
 
 export default async function MemberHomePage() {
   const profile = await getMemberProfile();
   const committee = profile?.committee ?? null;
 
-  const [childCount, announcement, events, lead, nextMeeting] =
+  const [childCount, counts, announcement, events, lead, nextMeeting] =
     await Promise.all([
       getBeneficiaryCount(),
+      getMemberCounts(),
       getLatestAnnouncement(),
-      getUpcomingEvents(3),
+      getNextEvents(3),
       committee ? getCommitteeLead() : Promise.resolve(null),
       committee ? getNextCommitteeMeeting(committee) : Promise.resolve(null),
     ]);
@@ -26,113 +43,168 @@ export default async function MemberHomePage() {
 
   return (
     <div className="flex flex-col gap-6 pt-5">
-      <PageHeader
-        title={`Welcome, ${firstName}`}
-        subtitle="Here's what's happening at the foundation."
-      />
+      <WelcomeBanner firstName={firstName} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <p className="text-sm text-tace-gray">Children in our programme</p>
-          <p className="mt-1 font-heading text-3xl font-bold text-tace-navy">
-            {childCount}
-          </p>
-          <p className="mt-1 text-xs text-tace-gray">
-            Children whose families agreed to appear publicly.
-          </p>
-        </Card>
-
-        <Card>
-          <h2 className="font-heading text-base font-semibold text-tace-navy">
-            My Committee
-          </h2>
-          {committee ? (
-            <dl className="mt-2 space-y-1 text-sm">
-              <div>
-                <dt className="inline text-tace-gray">Committee: </dt>
-                <dd className="inline font-medium text-tace-navy">{committee}</dd>
-              </div>
-              <div>
-                <dt className="inline text-tace-gray">Lead: </dt>
-                <dd className="inline font-medium text-tace-navy">
-                  {lead ?? "Not assigned yet"}
-                </dd>
-              </div>
-              <div>
-                <dt className="inline text-tace-gray">Next meeting: </dt>
-                <dd className="inline font-medium text-tace-navy">
-                  {nextMeeting
-                    ? formatDate(nextMeeting.event_date, true)
-                    : "None scheduled"}
-                </dd>
-              </div>
-            </dl>
-          ) : (
-            <p className="mt-2 text-sm text-tace-gray">
-              You haven&apos;t been placed on a committee yet. An admin will
-              assign you soon.
-            </p>
-          )}
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          icon={Users}
+          label="Children in Our Programme"
+          value={childCount}
+          accent="blue"
+          href="/dashboard/member/campaigns"
+        />
+        <StatCard
+          icon={CalendarDays}
+          label="Upcoming Events"
+          value={counts.upcomingEvents}
+          accent="yellow"
+          href="/dashboard/member/events"
+        />
+        <StatCard
+          icon={HeartHandshake}
+          label="Active Campaigns"
+          value={counts.activeCampaigns}
+          accent="red"
+          href="/dashboard/member/campaigns"
+        />
+        <StatCard
+          icon={Megaphone}
+          label="Announcements"
+          value={counts.announcements}
+          accent="green"
+          href="/dashboard/member/updates"
+        />
+        <StatCard
+          icon={Sparkles}
+          label="Impact Stories"
+          value={counts.stories}
+          accent="slate"
+          href="/dashboard/member/impact"
+        />
+        <StatCard
+          icon={Building2}
+          label="My Committee"
+          value={committee ?? "Not yet assigned"}
+          accent="blue"
+          href="/dashboard/member/committee"
+        />
       </div>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="font-heading text-lg font-semibold text-tace-navy">
-          Latest announcement
-        </h2>
-        {announcement ? (
-          <Card>
-            <p className="font-semibold text-tace-navy">{announcement.title}</p>
-            <p className="mt-0.5 text-xs text-tace-gray">
-              {formatDate(announcement.published_at)}
-            </p>
-            <p className="mt-2 line-clamp-4 whitespace-pre-line text-sm text-tace-gray">
-              {announcement.content}
-            </p>
-            <Link
-              href="/dashboard/member/updates"
-              className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-tace-blue hover:underline"
-            >
-              All updates
-            </Link>
-          </Card>
-        ) : (
-          <EmptyState
-            title="No announcements yet"
-            message="When the foundation posts news, you'll see it here first."
-          />
-        )}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="font-heading text-lg font-semibold text-tace-navy">
-          Upcoming events
-        </h2>
-        {events.length > 0 ? (
-          <div className="flex flex-col gap-3">
-            {events.map((e) => (
-              <Card key={e.id}>
-                <p className="font-semibold text-tace-navy">{e.title}</p>
-                <p className="mt-0.5 text-sm text-tace-gray">
-                  {formatDate(e.event_date, true)}
-                  {e.location ? ` · ${e.location}` : ""}
-                </p>
-              </Card>
-            ))}
-            <Link
-              href="/dashboard/member/events"
-              className="inline-flex min-h-11 items-center text-sm font-medium text-tace-blue hover:underline"
-            >
-              See all events and RSVP
-            </Link>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1.1fr)]">
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="rounded-[14px] border border-[#ECEFF3] bg-white p-[22px]">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-heading text-base font-semibold text-tace-navy">
+                Latest Announcement
+              </h2>
+              <Link
+                href="/dashboard/member/updates"
+                className="inline-flex min-h-11 items-center gap-1 text-[13px] font-medium text-tace-blue hover:underline"
+              >
+                View all <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+            {announcement ? (
+              <div className="mt-2 flex gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#FEF6E2] text-tace-yellow">
+                  <Megaphone className="size-[17px]" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[14px] font-semibold text-tace-navy">
+                    {announcement.title}
+                  </p>
+                  <p className="text-xs text-tace-gray/70">
+                    {formatDate(announcement.published_at)}
+                  </p>
+                  <p className="mt-2 line-clamp-4 whitespace-pre-line text-sm text-tace-gray">
+                    {announcement.content}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="py-8 text-center text-[13.5px] text-tace-gray/70">
+                No announcements yet. When the foundation posts news,
+                you&apos;ll see it here first.
+              </p>
+            )}
           </div>
-        ) : (
-          <EmptyState
-            title="Nothing scheduled"
-            message="No upcoming events or meetings right now. Check back soon."
-          />
-        )}
-      </section>
+
+          <div className="rounded-[14px] border border-[#ECEFF3] bg-white p-[22px]">
+            <h2 className="font-heading text-base font-semibold text-tace-navy">
+              My Committee
+            </h2>
+            {committee ? (
+              <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl bg-[#E8F6FD] p-3.5">
+                  <dt className="text-xs text-tace-gray">Committee</dt>
+                  <dd className="mt-0.5 text-sm font-bold text-tace-navy">
+                    {committee}
+                  </dd>
+                </div>
+                <div className="rounded-xl bg-[#F4F1FF] p-3.5">
+                  <dt className="text-xs text-tace-gray">Lead</dt>
+                  <dd className="mt-0.5 text-sm font-bold text-tace-navy">
+                    {lead ?? "Not assigned yet"}
+                  </dd>
+                </div>
+                <div className="rounded-xl bg-[#EAF8EF] p-3.5">
+                  <dt className="text-xs text-tace-gray">Next meeting</dt>
+                  <dd className="mt-0.5 text-sm font-bold text-tace-navy">
+                    {nextMeeting
+                      ? formatDate(nextMeeting.event_date, true)
+                      : "None scheduled"}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="py-6 text-center text-[13.5px] text-tace-gray/70">
+                You haven&apos;t been placed on a committee yet. An admin will
+                assign you soon.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="rounded-[14px] border border-[#ECEFF3] bg-white p-[18px]">
+            <h2 className="font-heading text-base font-semibold text-tace-navy">
+              Quick Actions
+            </h2>
+            <div className="mt-3.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <QuickActionCard
+                icon={Building2}
+                label="Monthly Update"
+                subtitle="Report for your committee"
+                href="/dashboard/member/committee"
+                accent="blue"
+              />
+              <QuickActionCard
+                icon={CalendarDays}
+                label="RSVP to Events"
+                subtitle="Attend or decline"
+                href="/dashboard/member/events"
+                accent="green"
+              />
+              <QuickActionCard
+                icon={FolderOpen}
+                label="Resources"
+                subtitle="Foundation documents"
+                href="/dashboard/member/resources"
+                accent="purple"
+              />
+              <QuickActionCard
+                icon={UserCircle}
+                label="My Profile"
+                subtitle="Update your details"
+                href="/dashboard/member/profile"
+                accent="pink"
+              />
+            </div>
+          </div>
+
+          <UpcomingEventsPanel events={events} />
+        </div>
+      </div>
     </div>
   );
 }

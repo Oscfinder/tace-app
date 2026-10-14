@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Inbox, type LucideIcon } from "lucide-react";
 import { PAGE_SIZE } from "@/lib/member/queries";
 
 export function PageHeader({
@@ -14,6 +15,7 @@ export function PageHeader({
       {subtitle ? (
         <p className="mt-1 text-sm text-tace-gray">{subtitle}</p>
       ) : null}
+      <div className="mt-3 h-[3px] w-12 rounded-full bg-tace-blue" />
     </div>
   );
 }
@@ -27,7 +29,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-[14px] border border-[#ECEFF3] bg-white p-5 ${className}`}
+      className={`rounded-[14px] border border-[#ECEFF3] bg-white p-[22px] ${className}`}
     >
       {children}
     </div>
@@ -43,6 +45,9 @@ export function EmptyState({
 }) {
   return (
     <div className="rounded-[14px] border border-dashed border-[#D9DEE5] bg-white px-5 py-10 text-center">
+      <span className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-[#E8F6FD] text-tace-blue">
+        <Inbox className="size-5" />
+      </span>
       <p className="font-heading text-base font-semibold text-tace-navy">
         {title}
       </p>
@@ -102,5 +107,44 @@ export function Pagination({
         <span />
       )}
     </nav>
+  );
+}
+
+// Calendar-style date tile, same look as the admin Upcoming Activities panel.
+export function DateBadge({ iso }: { iso: string | null }) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return (
+    <div className="flex w-11 shrink-0 flex-col overflow-hidden rounded-lg bg-[#EEF8FF] text-center text-tace-blue">
+      <span className="bg-[#DFF2FF] text-[9px] font-bold leading-[18px]">
+        {d.toLocaleString("en-US", { month: "short" }).toUpperCase()}
+      </span>
+      <span className="text-base font-extrabold leading-[26px]">
+        {d.toLocaleString("en-US", { day: "2-digit" })}
+      </span>
+    </div>
+  );
+}
+
+const TILE_ACCENTS = {
+  blue: "bg-[#E8F6FD] text-tace-blue",
+  yellow: "bg-[#FEF6E2] text-tace-yellow",
+  green: "bg-[#EAF8EF] text-tace-green",
+  purple: "bg-[#F4F1FF] text-[#7759E8]",
+} as const;
+
+export function IconTile({
+  icon: Icon,
+  accent = "blue",
+}: {
+  icon: LucideIcon;
+  accent?: keyof typeof TILE_ACCENTS;
+}) {
+  return (
+    <span
+      className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${TILE_ACCENTS[accent]}`}
+    >
+      <Icon className="size-[17px]" />
+    </span>
   );
 }

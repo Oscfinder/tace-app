@@ -68,6 +68,10 @@ export function MemberSidebar({
   return (
     <Sidebar collapsible="offcanvas" className="border-r-0">
       <div className="relative flex h-full flex-col overflow-hidden bg-gradient-to-b from-[#061e3c] to-[#062a53]">
+        <div
+          className="pointer-events-none absolute -bottom-24 -left-24 size-64 rounded-full bg-tace-blue/[0.08]"
+          aria-hidden
+        />
         <SidebarHeader className="relative z-10 px-3 py-5">
           <Link href="/dashboard/member" className="flex items-center gap-2.5 px-2">
             <Image

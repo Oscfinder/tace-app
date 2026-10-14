@@ -65,6 +65,30 @@ export async function getBeneficiaryCount(): Promise<number> {
   return count ?? 0;
 }
 
+export async function getMemberCounts() {
+  const supabase = await createClient();
+  const head = { count: "exact", head: true } as const;
+  const [events, campaigns, announcements, stories] = await Promise.all([
+    supabase
+      .from("events")
+      .select("id", head)
+      .gte("event_date", new Date().toISOString()),
+    supabase
+      .from("projects")
+      .select("id", head)
+      .eq("is_published", true)
+      .eq("status", "active"),
+    supabase.from("announcements").select("id", head).eq("is_published", true),
+    supabase.from("stories").select("id", head).eq("is_published", true),
+  ]);
+  return {
+    upcomingEvents: events.count ?? 0,
+    activeCampaigns: campaigns.count ?? 0,
+    announcements: announcements.count ?? 0,
+    stories: stories.count ?? 0,
+  };
+}
+
 export async function getLatestAnnouncement(): Promise<AnnouncementRow | null> {
   const supabase = await createClient();
   const { data } = await supabase

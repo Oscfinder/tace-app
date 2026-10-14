@@ -5,6 +5,14 @@ import { usePathname } from "next/navigation";
 
 const LABELS: Record<string, string> = {
   admin: "Home",
+  member: "Home",
+  updates: "Foundation Updates",
+  impact: "Impact Feed",
+  committee: "My Committee",
+  events: "Events & Meetings",
+  campaigns: "Campaigns",
+  resources: "Resources",
+  profile: "My Profile",
   applications: "Applications",
   beneficiaries: "Beneficiaries",
   members: "Members",

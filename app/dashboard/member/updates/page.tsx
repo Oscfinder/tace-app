@@ -1,7 +1,9 @@
+import { Megaphone } from "lucide-react";
 import { getAnnouncementsPage } from "@/lib/member/queries";
 import {
   Card,
   EmptyState,
+  IconTile,
   PageHeader,
   Pagination,
   formatDate,
@@ -25,14 +27,17 @@ export default async function UpdatesPage({
       {rows.length > 0 ? (
         <div className="flex flex-col gap-3">
           {rows.map((a) => (
-            <Card key={a.id}>
-              <h2 className="font-semibold text-tace-navy">{a.title}</h2>
-              <p className="mt-0.5 text-xs text-tace-gray">
-                {formatDate(a.published_at)}
-              </p>
-              <p className="mt-2 whitespace-pre-line text-sm text-tace-gray">
-                {a.content}
-              </p>
+            <Card key={a.id} className="flex gap-3">
+              <IconTile icon={Megaphone} accent="yellow" />
+              <div className="min-w-0">
+                <h2 className="font-semibold text-tace-navy">{a.title}</h2>
+                <p className="mt-0.5 text-xs text-tace-gray">
+                  {formatDate(a.published_at)}
+                </p>
+                <p className="mt-2 whitespace-pre-line text-sm text-tace-gray">
+                  {a.content}
+                </p>
+              </div>
             </Card>
           ))}
         </div>

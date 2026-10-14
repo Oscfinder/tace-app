@@ -5,7 +5,13 @@ import {
   getUpcomingEvents,
 } from "@/lib/member/queries";
 import { RsvpButtons } from "@/components/member/rsvp-buttons";
-import { Card, EmptyState, PageHeader, formatDate } from "@/components/member/ui";
+import {
+  Card,
+  DateBadge,
+  EmptyState,
+  PageHeader,
+  formatDate,
+} from "@/components/member/ui";
 
 export default async function EventsPage() {
   const profile = await getMemberProfile();
@@ -29,24 +35,27 @@ export default async function EventsPage() {
         {upcoming.length > 0 ? (
           upcoming.map((e) => (
             <Card key={e.id} className="flex flex-col gap-3">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold text-tace-navy">{e.title}</h3>
-                  {e.event_type ? (
-                    <span className="rounded-full bg-tace-lgray px-2 py-0.5 text-[11px] font-bold capitalize text-tace-gray">
-                      {e.event_type}
-                    </span>
+              <div className="flex gap-3">
+                <DateBadge iso={e.event_date} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-tace-navy">{e.title}</h3>
+                    {e.event_type ? (
+                      <span className="rounded-full bg-tace-lgray px-2 py-0.5 text-[11px] font-bold capitalize text-tace-gray">
+                        {e.event_type}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-0.5 text-sm text-tace-gray">
+                    {formatDate(e.event_date, true)}
+                    {e.location ? ` · ${e.location}` : ""}
+                  </p>
+                  {e.description ? (
+                    <p className="mt-2 whitespace-pre-line text-sm text-tace-gray">
+                      {e.description}
+                    </p>
                   ) : null}
                 </div>
-                <p className="mt-0.5 text-sm text-tace-gray">
-                  {formatDate(e.event_date, true)}
-                  {e.location ? ` · ${e.location}` : ""}
-                </p>
-                {e.description ? (
-                  <p className="mt-2 whitespace-pre-line text-sm text-tace-gray">
-                    {e.description}
-                  </p>
-                ) : null}
               </div>
               <RsvpButtons eventId={e.id} initial={rsvps.get(e.id) ?? null} />
             </Card>
