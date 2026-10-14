@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Users,
   Heart,
@@ -95,21 +96,21 @@ export default async function AdminHomePage() {
           icon={GraduationCap}
           label="Active Mentors"
           value={stats.activeMentors}
-          accent="blue"
+          accent="purple"
           href="/dashboard/admin/mentors"
         />
         <StatCard
           icon={UserCheck}
           label="Active Members"
           value={stats.activeMembers}
-          accent="slate"
+          accent="teal"
           href="/dashboard/admin/members"
         />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1.1fr)]">
         <div className="flex min-w-0 flex-col gap-5">
-          <div className="rounded-[14px] border border-[#ECEFF3] bg-white p-[22px]">
+          <div className="rounded-[13px] border border-[#e5edf6] bg-white shadow-[0_8px_28px_rgba(20,55,95,0.07)] p-[22px]">
             <h2 className="font-heading text-base font-semibold text-tace-navy">
               Impact Overview
             </h2>
@@ -121,7 +122,7 @@ export default async function AdminHomePage() {
             </div>
           </div>
 
-          <div className="rounded-[14px] border border-[#ECEFF3] bg-white p-[22px]">
+          <div className="rounded-[13px] border border-[#e5edf6] bg-white shadow-[0_8px_28px_rgba(20,55,95,0.07)] p-[22px]">
             <h2 className="mb-4 font-heading text-base font-semibold text-tace-navy">
               Recent Activity
             </h2>
@@ -164,7 +165,7 @@ export default async function AdminHomePage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-5">
-          <div className="rounded-[14px] border border-[#ECEFF3] bg-white p-[18px]">
+          <div className="rounded-[13px] border border-[#e5edf6] bg-white shadow-[0_8px_28px_rgba(20,55,95,0.07)] p-[18px]">
             <h2 className="font-heading text-base font-semibold text-tace-navy">
               Quick Actions
             </h2>
@@ -201,6 +202,29 @@ export default async function AdminHomePage() {
           </div>
 
           <UpcomingEventsPanel events={upcomingEvents} />
+
+          <section className="relative h-[110px] overflow-hidden rounded-xl bg-gradient-to-r from-[#0a4a8a] to-[#0b8bd6] px-[18px] py-4 text-white">
+            <span
+              className="pointer-events-none absolute right-[50px] -bottom-2 text-[70px] drop-shadow-[0_7px_5px_rgba(0,0,0,0.12)]"
+              aria-hidden
+            >
+              🎒
+            </span>
+            <small className="text-[10px] font-extrabold tracking-[0.5px]">
+              TACE FOUNDATION
+            </small>
+            <b className="mt-1.5 block max-w-[210px] text-base leading-[1.15]">
+              A brighter future
+              <br />
+              starts with you.
+            </b>
+            <Link
+              href="/dashboard/admin/sponsors"
+              className="mt-2.5 inline-flex min-h-8 items-center rounded-[7px] bg-[#ffc52b] px-3 text-[11px] font-extrabold text-[#173557] hover:bg-[#ffd04f]"
+            >
+              Become a Supporter →
+            </Link>
+          </section>
         </div>
       </div>
     </div>

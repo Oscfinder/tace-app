@@ -7,7 +7,7 @@ function greeting() {
 
 export function WelcomeBanner({ firstName }: { firstName: string }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[#E1EDF8] bg-gradient-to-r from-[#E9F7FF] via-[#EEF8FF] to-[#DFF2FF] p-7">
+    <div className="relative overflow-hidden rounded-2xl border border-[#e1edf8] shadow-[0_8px_28px_rgba(20,55,95,0.07)] bg-gradient-to-r from-[#E9F7FF] via-[#EEF8FF] to-[#DFF2FF] p-7">
       <div className="relative z-10 max-w-[650px]">
         <p className="text-sm font-semibold text-tace-blue">
           {greeting()}, {firstName} 👋

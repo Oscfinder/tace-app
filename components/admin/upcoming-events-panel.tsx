@@ -11,7 +11,7 @@ function formatDate(iso: string) {
 
 export function UpcomingEventsPanel({ events }: { events: UpcomingEvent[] }) {
   return (
-    <div className="rounded-[14px] border border-[#ECEFF3] bg-white p-5">
+    <div className="rounded-[13px] border border-[#e5edf6] bg-white shadow-[0_8px_28px_rgba(20,55,95,0.07)] p-5">
       <h3 className="font-heading text-sm font-semibold text-tace-navy">
         Upcoming Activities
       </h3>
@@ -44,6 +44,9 @@ export function UpcomingEventsPanel({ events }: { events: UpcomingEvent[] }) {
                     </div>
                   ) : null}
                 </div>
+                <span className="shrink-0 rounded-lg bg-[#e9f7ff] px-2 py-1 text-[10px] font-semibold text-[#0d91de]">
+                  Scheduled
+                </span>
               </div>
             );
           })}

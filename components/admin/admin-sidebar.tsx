@@ -17,19 +17,14 @@ import {
   LineChart,
   Settings,
   LogOut,
-  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -47,7 +42,7 @@ type NavItem = {
   badge?: number;
 };
 
-function initialsOf(name: string) {
+export function initialsOf(name: string) {
   return name
     .split(" ")
     .map((part) => part.charAt(0))
@@ -58,12 +53,15 @@ function initialsOf(name: string) {
 
 export function AdminSidebar({
   fullName,
+  roleLabel,
   pendingApplications,
 }: {
   fullName: string;
+  roleLabel: string;
   pendingApplications: number;
 }) {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
   const [signOutOpen, setSignOutOpen] = useState(false);
 
   const NAV_ITEMS: NavItem[] = [
@@ -96,15 +94,17 @@ export function AdminSidebar({
   return (
     <>
       <Sidebar collapsible="offcanvas" className="border-r-0">
-        <div className="relative flex h-full flex-col overflow-hidden bg-gradient-to-b from-[#061e3c] to-[#062a53]">
+        <div className="relative flex h-full flex-col overflow-hidden bg-gradient-to-b from-[#061e3c] to-[#062a53] px-[17px] py-[18px] text-white">
+          {/* Soft decorative circles, bottom-left (from the design). */}
           <div
-            className="pointer-events-none absolute -bottom-24 -left-24 size-64 rounded-full bg-tace-blue/[0.08]"
+            className="pointer-events-none absolute -bottom-[100px] -left-[110px] size-[280px] rounded-full bg-[#159fea]/[0.08] shadow-[130px_-30px_0_rgba(21,159,234,0.04),190px_55px_0_rgba(21,159,234,0.035)]"
             aria-hidden
           />
-          <SidebarHeader className="relative z-10 px-3 py-5">
+
+          <SidebarHeader className="relative z-10 p-0">
             <Link
               href="/dashboard/admin"
-              className="flex items-center gap-2.5 px-2"
+              className="flex h-[83px] items-center gap-3 px-2"
             >
               <Image
                 src="/images/tace-icon.png"
@@ -112,69 +112,66 @@ export function AdminSidebar({
                 width={192}
                 height={192}
                 priority
-                className="size-10 shrink-0 object-contain"
+                className="size-12 shrink-0 object-contain drop-shadow-[0_3px_8px_#00a8e855]"
               />
               <span className="flex flex-col leading-tight">
-                <span className="font-heading text-lg font-bold text-white">
+                <span className="font-heading text-xl font-bold text-white">
                   TACE Foundation
                 </span>
-                <span className="text-xs text-white/40">
+                <span className="mt-0.5 text-[11px] text-[#b9cae0]">
                   Guiding Children Toward Independence
                 </span>
               </span>
             </Link>
           </SidebarHeader>
 
-          <SidebarContent className="relative z-10 px-2">
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {NAV_ITEMS.map((item) => {
-                    const active = item.exact
-                      ? pathname === item.href
-                      : pathname.startsWith(item.href);
-                    return (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton
-                          isActive={active}
-                          render={<Link href={item.href} />}
-                          className={
-                            active
-                              ? "bg-tace-blue text-white hover:bg-tace-blue hover:text-white"
-                              : "text-white/60 hover:bg-white/5 hover:text-white/80"
-                          }
-                        >
-                          <item.icon className="size-[18px]" />
-                          {item.label}
-                        </SidebarMenuButton>
-                        {item.badge ? (
-                          <SidebarMenuBadge className="bg-tace-red text-[11px] font-bold text-white">
-                            {item.badge}
-                          </SidebarMenuBadge>
-                        ) : null}
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+          <SidebarContent className="relative z-10 mt-[18px] gap-0 overflow-x-hidden p-0">
+            <nav
+              aria-label="Main navigation"
+              className="flex flex-col gap-[5px]"
+            >
+              {NAV_ITEMS.map((item) => {
+                const active = item.exact
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpenMobile(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex h-[46px] items-center gap-3.5 rounded-[11px] px-4 text-sm font-semibold transition ${
+                      active
+                        ? "bg-gradient-to-r from-[#14a7ef] to-[#1b9eea] text-white shadow-[0_7px_18px_rgba(9,154,232,0.22)]"
+                        : "text-[#dce9f7] hover:bg-white/[0.07] hover:text-white"
+                    }`}
+                  >
+                    <item.icon className="size-5 shrink-0" />
+                    {item.label}
+                    {item.badge ? (
+                      <span className="ml-auto grid h-[22px] min-w-[22px] place-items-center rounded-full bg-[#0d72b7] px-1.5 text-[11px] font-bold text-white">
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
           </SidebarContent>
 
-          <SidebarFooter className="relative z-10 border-t border-white/10 px-3 py-3.5">
+          <SidebarFooter className="relative z-10 mt-auto border-t border-white/[0.12] px-2.5 pt-[17px] pb-[3px]">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex w-full items-center gap-2.5 rounded-lg px-1 py-1 outline-none hover:bg-white/5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-tace-blue text-[13px] font-semibold text-white">
+              <DropdownMenuTrigger className="flex min-h-11 w-full items-center gap-3 rounded-xl text-left outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-[#159fea]">
+                <span className="grid size-[38px] shrink-0 place-items-center rounded-full bg-[#159fea] font-extrabold text-white">
                   {initialsOf(fullName)}
                 </span>
-                <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
-                  <span className="truncate text-[13px] font-medium text-white">
-                    {fullName}
-                  </span>
-                  <span className="text-[11px] text-white/40">
-                    Administrator
+                <span className="flex min-w-0 flex-1 flex-col leading-tight">
+                  <b className="truncate text-[13px]">{fullName}</b>
+                  <span className="mt-0.5 truncate text-[11px] text-[#b9cae0]">
+                    {roleLabel}
                   </span>
                 </span>
-                <ChevronDown className="size-4 shrink-0 text-white/40" />
+                <ChevronRight className="size-4 shrink-0 text-white/85" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="top" className="w-56">
                 <DropdownMenuItem
