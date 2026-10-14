@@ -43,6 +43,26 @@ export async function updateBeneficiaryStage(input: {
     .eq("id", input.beneficiaryId);
   if (updateError) return { error: updateError.message };
 
+  // Celebrate with the child (or their guardian, who shares the login).
+  // Best-effort: the stage change has already succeeded, so a failed
+  // notification must not make it look like it failed.
+  const { data: child } = await supabase
+    .from("beneficiaries")
+    .select("profile_id, first_name")
+    .eq("id", input.beneficiaryId)
+    .maybeSingle();
+  if (child?.profile_id) {
+    const { error: notifyError } = await supabase.from("notifications").insert({
+      profile_id: child.profile_id,
+      title: `Congratulations, ${child.first_name}! 🎉`,
+      body: `You've reached a new step: ${STAGE_LABELS[input.newStage] ?? input.newStage}. We're so proud of you!`,
+      type: "stage_change",
+    });
+    if (notifyError) {
+      console.error("Stage-change notification failed:", notifyError.message);
+    }
+  }
+
   revalidatePath(`/dashboard/admin/beneficiaries/${input.beneficiaryId}`);
   revalidatePath("/dashboard/admin/beneficiaries");
   return { success: true };

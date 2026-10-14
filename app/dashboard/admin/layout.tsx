@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth/guards";
 import { getPendingApplicationsCount } from "@/lib/admin/dashboard-stats";
+import { getPendingThankYouCount } from "@/lib/admin/thank-you";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AdminHeader } from "@/components/admin/admin-header";
@@ -23,9 +24,10 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [session, pendingApplications] = await Promise.all([
+  const [session, pendingApplications, pendingThankYous] = await Promise.all([
     getSession(),
     getPendingApplicationsCount(),
+    getPendingThankYouCount(),
   ]);
   const fullName = session?.profile.full_name ?? "Admin";
   const roleLabel = await getRoleLabel(session?.user.id);
@@ -38,6 +40,7 @@ export default async function AdminLayout({
         fullName={fullName}
         roleLabel={roleLabel}
         pendingApplications={pendingApplications}
+        pendingThankYous={pendingThankYous}
       />
       <SidebarInset className="bg-[#f7faff]">
         <AdminHeader fullName={fullName} roleLabel={roleLabel} />

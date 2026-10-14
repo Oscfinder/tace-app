@@ -26,6 +26,7 @@ const LABELS: Record<string, string> = {
   new: "New",
   stories: "Stories",
   announcements: "Announcements",
+  "thank-you-messages": "Thank-You Messages",
 };
 
 function labelFor(segment: string) {

@@ -1,5 +1,36 @@
 # TACE Platform — Updates Log
 
+## Oct 14, 2026 — Ticket 3C: Beneficiary dashboard
+
+Built `app/dashboard/beneficiary/` (mobile-first, large text, 44px+ touch targets, warm empty states) plus the two admin additions. Same visual system as the member dashboard (`m-*` palette, shared `components/member/ui.tsx` primitives; fonts moved to `lib/dashboard-fonts.ts`).
+
+### New migration to run: `supabase/migrations/006_beneficiary_dashboard.sql`
+A child had no storage permission to read their **own** photo (only admin, linked sponsor/mentor). 006 adds a read policy limited to `{their beneficiary_id}/…`. Photos still at `applications/…` (approved before the photo-move shipped) won't show until moved; the page just shows an initial.
+
+### Pages
+- **Me** (profile): first name, photo (1-hour signed URL), TACE ID, current stage with "Step n of 9", member since, links to everything.
+- **My Journey:** vertical 9-step tracker — completed ticked, current highlighted "You are here", a short encouraging line per stage (`lib/beneficiary/stages.ts`).
+- **My Support:** interventions (type, description, date, amount in ₦).
+- **My Mentor:** from the `my_mentor` view (name, profession, track — no contact details); Message button disabled with "Messaging opens soon"; "Next check-in: Not scheduled yet".
+- **My Sponsor:** from `my_sponsor` (first name only) + "Say thank you" form saving to `thank_you_messages` as `pending`. Max 3 waiting at once; the child sees each message's status in kind wording.
+- **My Progress:** progress updates and certificates (signed URLs from the `certificates` bucket).
+- **Alerts:** notifications list with mark read / mark all read. The header bell reuses the shared component.
+- Navigation is a sticky top bar with a horizontally scrollable section menu (works on small phones), the bell and a sign-out button (with the confirmation dialog).
+
+### Admin additions
+- **`/dashboard/admin/thank-you-messages`:** approve/reject queue (pending first, reviewed history below), sidebar item with a pending-count badge. Only pending messages can be reviewed. Approving also notifies the sponsor.
+- **Stage change → notification:** `updateBeneficiaryStage` now inserts a "Congratulations" notification for the child's profile (best-effort; a failed notification doesn't fail the stage change).
+
+### Notes / deviations
+- **"Project" on My Support:** `interventions` has no project column, so it isn't shown.
+- **Training attendance and assignments** have no tables, so they're omitted (as the ticket says).
+- **Admin stage notes are visible to the child** in My Progress (they're the `progress_updates` content), so notes should be written kindly.
+- Only RLS-limited queries are used; nothing touches `public_beneficiaries`, `my_mentor`/`my_sponsor` expose no surnames, emails or phones, and thank-you messages stay hidden from sponsors until approved (existing RLS).
+
+### Verified
+- `tsc`, lint and production build pass.
+- **Not yet tested with real accounts.** To check: approve an application and log in as that beneficiary; test with two beneficiaries (each sees only their own data); link a sponsor and mentor; send a thank-you and confirm the sponsor can't see it until approved; change the stage in admin and confirm the notification appears; view at 375px.
+
 ## Oct 14, 2026 — Ticket 3B: Beneficiary application form (/apply)
 
 Public, no-account application form at `/apply` (`app/(public)/apply/page.tsx`, `components/apply/`). Needs migration 002 (already run) for the tightened `applications` insert policy, `application_submissions` and the anonymous `applications/` photo upload rule.

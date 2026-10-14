@@ -16,6 +16,7 @@ import {
   BookOpen,
   LineChart,
   Settings,
+  MessageSquareHeart,
   LogOut,
   ChevronRight,
 } from "lucide-react";
@@ -55,10 +56,12 @@ export function AdminSidebar({
   fullName,
   roleLabel,
   pendingApplications,
+  pendingThankYous,
 }: {
   fullName: string;
   roleLabel: string;
   pendingApplications: number;
+  pendingThankYous: number;
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
@@ -86,6 +89,12 @@ export function AdminSidebar({
       icon: DollarSign,
     },
     { href: "/dashboard/admin/projects", label: "Projects", icon: Folder },
+    {
+      href: "/dashboard/admin/thank-you-messages",
+      label: "Thank-You Messages",
+      icon: MessageSquareHeart,
+      badge: pendingThankYous > 0 ? pendingThankYous : undefined,
+    },
     { href: "/dashboard/admin/content", label: "Content", icon: BookOpen },
     { href: "/dashboard/admin/reports", label: "Reports", icon: LineChart },
     { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
