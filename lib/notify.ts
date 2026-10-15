@@ -68,3 +68,19 @@ export async function matchParties(matchId: string) {
     childFirstName: child?.first_name ?? "the child",
   };
 }
+
+// One unread notification per recipient per thread (or per type). If there is
+// already an unread one, do nothing, so a busy chat doesn't flood the bell.
+// The notification never contains message text.
+export async function notifyIfNoUnread(notice: Notice) {
+  if (!notice.profileId) return;
+  const admin = createAdminClient();
+  const { count } = await admin
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", notice.profileId)
+    .eq("type", notice.type)
+    .eq("is_read", false);
+  if ((count ?? 0) > 0) return;
+  await notifyProfiles([notice]);
+}

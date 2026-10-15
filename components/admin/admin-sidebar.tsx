@@ -20,6 +20,7 @@ import {
   Settings,
   MessageSquareHeart,
   ShieldAlert,
+  MessagesSquare,
   LogOut,
   ChevronRight,
 } from "lucide-react";
@@ -63,12 +64,14 @@ export function AdminSidebar({
   pendingApplications,
   pendingThankYous,
   openConcerns,
+  flaggedMessages,
 }: {
   fullName: string;
   roleLabel: string;
   pendingApplications: number;
   pendingThankYous: number;
   openConcerns: number;
+  flaggedMessages: number;
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
@@ -90,6 +93,12 @@ export function AdminSidebar({
     { href: "/dashboard/admin/members", label: "Members", icon: UserCheck },
     { href: "/dashboard/admin/sponsors", label: "Sponsors", icon: Heart },
     { href: "/dashboard/admin/mentors", label: "Mentors", icon: GraduationCap },
+    {
+      href: "/dashboard/admin/messages",
+      label: "Messages",
+      icon: MessagesSquare,
+      badge: flaggedMessages > 0 ? flaggedMessages : undefined,
+    },
     {
       href: "/dashboard/admin/concerns",
       label: "Concerns",

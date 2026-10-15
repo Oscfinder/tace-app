@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { CalendarClock, GraduationCap, MessageCircle } from "lucide-react";
 import {
   getMyBeneficiary,
   getMyMentor,
   getMyMentorRequest,
-  getMyNextCheckIn,
+  getMyActiveMatch,
 } from "@/lib/beneficiary/queries";
 import { MentorRequestCard } from "@/components/beneficiary/mentor-request-card";
 import {
@@ -17,12 +18,13 @@ import {
 const TRACKS = { career: "Career guidance", tech: "Technology skills" } as const;
 
 export default async function MentorPage() {
-  const [mentor, mentorRequest, me, nextCheckIn] = await Promise.all([
+  const [mentor, mentorRequest, me, activeMatch] = await Promise.all([
     getMyMentor(),
     getMyMentorRequest(),
     getMyBeneficiary(),
-    getMyNextCheckIn(),
+    getMyActiveMatch(),
   ]);
+  const nextCheckIn = activeMatch?.next_check_in ?? null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -91,18 +93,19 @@ export default async function MentorPage() {
               />
             </div>
 
-            <button
-              type="button"
-              disabled
-              aria-describedby="msg-soon"
-              className="mt-4 flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-[#eef1f6] text-base font-bold text-[#8a98ab]"
-            >
-              <MessageCircle className="size-5" />
-              Send a message
-            </button>
-            <p id="msg-soon" className="mt-2 text-center text-sm text-m-muted">
-              Messaging opens soon
-            </p>
+            {activeMatch ? (
+              <Link
+                href="/dashboard/beneficiary/mentor/messages"
+                className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-m-blue to-m-blue2 text-base font-bold text-white shadow-[0_8px_18px_#009de832]"
+              >
+                <MessageCircle className="size-5" />
+                Send a message
+              </Link>
+            ) : (
+              <p className="mt-4 rounded-xl bg-[#f4f8fd] px-4 py-3 text-center text-sm text-m-muted">
+                Messaging is switched off for now.
+              </p>
+            )}
           </Card>
         </>
       ) : mentorRequest ? null : (

@@ -1,5 +1,37 @@
 # TACE Platform — Updates Log
 
+## Oct 16, 2026 — Ticket 4D: Monitored messaging (completes Phase 4)
+
+### Migration to run: `supabase/migrations/012_messaging_limits_and_holds.sql`
+**If you already ran an earlier copy of 012, run the whole file again.** A third part (the `mark_thread_read` refinement) was added after the first copy, and the file is safe to re-run. Tested on the in-process Postgres with every earlier migration: **124 checks pass**, 012 re-run three times.
+1. **30 messages per sender per hour, enforced in the database** (a trigger), in addition to the friendly check in the app. It is per sender, so one side hitting the limit doesn't stop the other from replying, and it counts a rolling hour.
+2. **Flagged messages are held.** *This goes slightly beyond the ticket, so please confirm you're happy with it.* The database flags (rather than rejects) any message containing contact details that gets past the app's own check. Previously the other person could still read a flagged message, which would put a phone number in front of a child, the exact thing the safeguard is for. Now a flagged message is visible only to its **sender** (shown to them as "held for review by TACE staff") and to **admin**. The recipient never sees it unless an admin reviews and un-flags it. The same applies when an admin flags a message by hand.
+3. Marking a thread as read no longer marks a *held* message as read by someone who was never shown it.
+
+### The chat (mentor and child's account)
+- **Where:** mentors at `/dashboard/mentor/messages/[matchId]` (a "Message {name}" button on each mentee page); the child at `/dashboard/beneficiary/mentor/messages`. The Message button on the child's My Mentor page is now live whenever the mentorship is active; the "Messaging opens soon" text is gone everywhere.
+- **Live updates:** Supabase Realtime on the thread; row-level security decides which rows reach the browser. If the live connection fails or hasn't opened within 5 seconds, it **falls back to polling every 15 seconds**. A small status line shows "Live" or "Refreshing every 15 seconds".
+- **Sending** (Server Action): must be a party to an **active** mentorship, 1 to 1000 characters, and a message containing a **phone number, email, link, social handle or app name** is **blocked** with a kind explanation (the database flag stays as the backstop). Checked on real phrases: all the contact-detail forms were caught and ordinary text ("I'm 12", "see you at 3pm", dates, scores) was not. It does not catch numbers spelled out in words.
+- **No edits, no deletes, no attachments** (the database allows none).
+- **Read tracking:** opening the thread, or receiving a message while it is open, marks the other side's visible messages read; senders see "Seen".
+- **Notifications:** the other side gets a notice of a new message with **no message text**, throttled to **one unread per thread**.
+- **Something doesn't feel right:** available on both sides of the chat. It creates a safeguarding concern about that conversation, notifies every admin, and the chat stays open.
+- **Disclosure line** at the top of every chat: "Messages on TACE are visible to TACE staff to keep children safe."
+- Mobile-first, labelled input, 44px+ targets, error text announced to screen readers, loading and "messaging is paused/switched off" states.
+
+### Admin message monitor (`/dashboard/admin/messages`, in the sidebar with a flagged-count badge)
+- All conversations with message counts, flagged counts and last activity (threads with flagged messages first), plus a **flagged-messages queue**.
+- A **read-only transcript** per conversation. Admin cannot send, edit or delete (the database refuses it).
+- **Flag / Unflag, each with a required reason**, written to the audit log. Un-flagging keeps the trail visible ("Reviewed and cleared: …"). **Pause / Resume / End match** from the same page. A message that is held by the database also alerts every admin.
+
+### Verified
+- `tsc`, lint and a production build pass.
+- **Rendered end to end** against a fake Supabase as a mentor, a child and an admin: the chat pages, the mentee page, the child's My Mentor page, and the admin monitor and transcript. The disclosure line, the messages, the "held for review" notice for a sender, the flagged queue and the transcript controls all appear, and nothing is in the server error log. A conversation that isn't yours returns 404.
+- **Not verifiable here, please test on the real site with two browsers:** (1) a message from one side appears on the other **without refreshing** (Realtime; if it doesn't, it should still appear within 15 seconds via polling); (2) the 31st message in an hour is refused; (3) a message with a phone number is blocked with the explanation; (4) pausing the match from the admin transcript stops the next send; (5) a third signed-in user cannot open the conversation.
+
+### Phase 4 is now complete
+4.0 (privacy hardening), 4A (sponsor), 4B (vetting and consent), 4C (mentor dashboard) and 4D (messaging).
+
 ## Oct 16, 2026 — Ticket 4C: Mentor dashboard
 
 ### Migration to run: `supabase/migrations/011_mentor_notes_policy.sql`

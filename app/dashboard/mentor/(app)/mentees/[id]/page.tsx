@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ClipboardList, Compass, FileText } from "lucide-react";
+import { ArrowLeft, ClipboardList, Compass, FileText, MessageCircle } from "lucide-react";
 import { getMentee } from "@/lib/mentor/queries";
 import { STAGE_LABELS } from "@/lib/beneficiary-stages";
 import { CLUSTERS } from "@/lib/career/clusters";
@@ -63,7 +63,16 @@ export default async function MenteePage({
               <Pill accent="teal">{STAGE_LABELS[mentee.current_stage]}</Pill>
             </div>
           </div>
-          <ConcernButton beneficiaryId={mentee.id} childName={mentee.first_name} />
+          <div className="flex flex-col gap-2 sm:items-end">
+            <Link
+              href={`/dashboard/mentor/messages/${data.matchId}`}
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-m-blue to-m-blue2 px-5 text-base font-bold text-white shadow-[0_8px_18px_#009de832] sm:w-auto"
+            >
+              <MessageCircle className="size-5" />
+              Message {mentee.first_name}
+            </Link>
+            <ConcernButton beneficiaryId={mentee.id} childName={mentee.first_name} />
+          </div>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">

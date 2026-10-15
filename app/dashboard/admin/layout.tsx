@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/guards";
 import { getPendingApplicationsCount } from "@/lib/admin/dashboard-stats";
 import { getPendingThankYouCount } from "@/lib/admin/thank-you";
 import { getOpenConcernCount } from "@/lib/admin/concerns";
+import { getFlaggedMessageCount } from "@/lib/admin/messages";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AdminHeader } from "@/components/admin/admin-header";
@@ -25,11 +26,18 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [session, pendingApplications, pendingThankYous, openConcerns] = await Promise.all([
+  const [
+    session,
+    pendingApplications,
+    pendingThankYous,
+    openConcerns,
+    flaggedMessages,
+  ] = await Promise.all([
     getSession(),
     getPendingApplicationsCount(),
     getPendingThankYouCount(),
     getOpenConcernCount(),
+    getFlaggedMessageCount(),
   ]);
   const fullName = session?.profile.full_name ?? "Admin";
   const roleLabel = await getRoleLabel(session?.user.id);
@@ -44,6 +52,7 @@ export default async function AdminLayout({
         pendingApplications={pendingApplications}
         pendingThankYous={pendingThankYous}
         openConcerns={openConcerns}
+        flaggedMessages={flaggedMessages}
       />
       <SidebarInset className="bg-[#f7faff]">
         <AdminHeader fullName={fullName} roleLabel={roleLabel} />

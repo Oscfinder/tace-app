@@ -165,15 +165,19 @@ export async function getMyMentorRequest() {
   return data;
 }
 
-// The next check-in the mentor has scheduled for this child's active
-// mentorship, or null. The child's account may read its own child's match.
-export async function getMyNextCheckIn(): Promise<string | null> {
+// The child's ACTIVE mentorship (its id for the chat, and the next check-in the
+// mentor has scheduled), or null. The child's account may read its own
+// child's match.
+export async function getMyActiveMatch(): Promise<{
+  id: string;
+  next_check_in: string | null;
+} | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("mentorship_matches")
-    .select("next_check_in")
+    .select("id, next_check_in")
     .eq("status", "active")
     .limit(1)
     .maybeSingle();
-  return data?.next_check_in ?? null;
+  return data;
 }

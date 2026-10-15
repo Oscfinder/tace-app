@@ -77,7 +77,7 @@ export default async function MentorHomePage() {
         <Stat
           label="Unread messages"
           value={unread}
-          foot="Messaging opens soon"
+          foot="From your mentees"
           icon={MessageSquare}
           accent="teal"
         />
