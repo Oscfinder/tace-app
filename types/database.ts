@@ -147,6 +147,7 @@ export type Database = {
           motivation: string | null;
           vetting_status: "pending" | "cleared" | "rejected";
           vetting_notes: string | null;
+          vetting_checklist: Record<string, boolean>;
           vetted_by: string | null;
           vetted_at: string | null;
           code_of_conduct_accepted_at: string | null;
@@ -617,6 +618,33 @@ export type Database = {
           talents: string | null;
           subjects_skills: string | null;
           match_id: string;
+        };
+        Relationships: [];
+      };
+      mentor_requests: {
+        Row: {
+          match_id: string;
+          beneficiary_id: string;
+          first_name: string;
+          age: number;
+          interests: string | null;
+          aspirations: string | null;
+          class_level: string | null;
+          consent_mentor: boolean;
+          consent_guardian: boolean;
+          created_at: string;
+        };
+        Relationships: [];
+      };
+      my_mentor_request: {
+        Row: {
+          match_id: string;
+          full_name: string;
+          profession: string | null;
+          mentor_track: MentorTrack | null;
+          consent_mentor: boolean;
+          consent_guardian: boolean;
+          created_at: string;
         };
         Relationships: [];
       };

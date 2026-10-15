@@ -1,20 +1,52 @@
 "use client";
 
-import { useState, type ComponentType } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut } from "lucide-react";
+import {
+  Gift,
+  GraduationCap,
+  HandHeart,
+  Heart,
+  Home,
+  Inbox,
+  LogOut,
+  MessageSquareHeart,
+  MessagesSquare,
+  TrendingUp,
+  UserCircle,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import {
   NotificationBell,
   type BellNotification,
 } from "@/components/shared/notification-bell";
 import { SignOutDialog } from "@/components/shared/sign-out-dialog";
 
+// Icons are components (functions), and a Server Component can't pass those to
+// a Client Component. Layouts pass a plain string key instead and the icon is
+// looked up here, on the client side of the boundary.
+const ICONS = {
+  home: Home,
+  heart: Heart,
+  progress: TrendingUp,
+  support: HandHeart,
+  gift: Gift,
+  thanks: MessageSquareHeart,
+  profile: UserCircle,
+  mentor: GraduationCap,
+  mentees: Users,
+  messages: MessagesSquare,
+  requests: Inbox,
+} satisfies Record<string, LucideIcon>;
+export type NavIcon = keyof typeof ICONS;
+
 export type NavTab = {
   href: string;
   label: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: NavIcon;
   exact?: boolean;
 };
 
@@ -75,6 +107,7 @@ export function TopNavHeader({
         className="mx-auto mt-2 flex max-w-4xl gap-2 overflow-x-auto px-4 pb-3 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {tabs.map((tab) => {
+          const Icon = ICONS[tab.icon];
           const active = tab.exact
             ? pathname === tab.href
             : pathname.startsWith(tab.href);
@@ -89,7 +122,7 @@ export function TopNavHeader({
                   : "bg-[#eef6fd] text-[#35597d] hover:bg-[#e1f0fb]"
               }`}
             >
-              <tab.icon className="size-[18px]" />
+              <Icon className="size-[18px]" />
               {tab.label}
             </Link>
           );

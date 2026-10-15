@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { sendEmail } from "@/lib/email/send";
 import { getSiteUrl } from "@/lib/site-url";
 import { movePhotoToBeneficiary } from "@/lib/storage/move-photo";
+import { createMatchCore } from "@/lib/admin/matches-core";
 import type { Database } from "@/types/database";
 
 type ActionResult = { error: string } | { success: true };
@@ -154,11 +155,15 @@ export async function approveApplication(input: {
   // Mirrors Ticket 2C's mentor-assignment rule: a mentor pick here creates a
   // pending-consent match, never sets beneficiaries.mentor_id directly.
   if (input.mentorId) {
-    await supabase.from("mentorship_matches").insert({
-      mentor_id: input.mentorId,
-      beneficiary_id: beneficiary.id,
-      status: "pending_consent",
+    const matchResult = await createMatchCore(supabase, {
+      beneficiaryId: beneficiary.id,
+      mentorId: input.mentorId,
     });
+    // The approval itself has succeeded; if the mentor can't be matched (not
+    // cleared, over the cap, ...) the admin can match from the child's profile.
+    if ("error" in matchResult) {
+      console.error("Mentor match on approval skipped:", matchResult.error);
+    }
   }
 
   // handle_new_user() always creates the profile as status='pending' — that

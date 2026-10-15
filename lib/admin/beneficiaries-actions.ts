@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
 import { STAGE_LABELS } from "@/lib/beneficiary-stages";
+import { createMatchCore } from "@/lib/admin/matches-core";
 import type { Database } from "@/types/database";
 
 type ActionResult = { error: string } | { success: true };
@@ -96,29 +97,13 @@ export async function assignMentor(input: {
 }): Promise<ActionResult> {
   await requireRole("admin");
   const supabase = await createClient();
-
-  const { data: existing } = await supabase
-    .from("mentorship_matches")
-    .select("id")
-    .eq("beneficiary_id", input.beneficiaryId)
-    .in("status", ["pending_consent", "active"])
-    .maybeSingle();
-  if (existing) {
-    return {
-      error: "This beneficiary already has a pending or active mentor match.",
-    };
-  }
-
-  // Pending-consent only — beneficiaries.mentor_id is set once the Phase 4
-  // consent flow completes, never directly from this assignment step.
-  const { error } = await supabase.from("mentorship_matches").insert({
-    beneficiary_id: input.beneficiaryId,
-    mentor_id: input.mentorId,
-    status: "pending_consent",
-  });
-  if (error) return { error: error.message };
+  // Same rules as the Mentors module: cleared + active mentor, under the
+  // mentee cap, no duplicate match, both sides notified.
+  const result = await createMatchCore(supabase, input);
+  if ("error" in result) return result;
 
   revalidatePath(`/dashboard/admin/beneficiaries/${input.beneficiaryId}`);
+  revalidatePath("/dashboard/admin/mentors");
   return { success: true };
 }
 

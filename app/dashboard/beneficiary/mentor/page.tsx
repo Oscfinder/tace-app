@@ -1,5 +1,6 @@
 import { CalendarClock, GraduationCap, MessageCircle } from "lucide-react";
-import { getMyMentor } from "@/lib/beneficiary/queries";
+import { getMyBeneficiary, getMyMentor, getMyMentorRequest } from "@/lib/beneficiary/queries";
+import { MentorRequestCard } from "@/components/beneficiary/mentor-request-card";
 import {
   Card,
   DetailRow,
@@ -11,7 +12,11 @@ import {
 const TRACKS = { career: "Career guidance", tech: "Technology skills" } as const;
 
 export default async function MentorPage() {
-  const mentor = await getMyMentor();
+  const [mentor, mentorRequest, me] = await Promise.all([
+    getMyMentor(),
+    getMyMentorRequest(),
+    getMyBeneficiary(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -20,6 +25,20 @@ export default async function MentorPage() {
         title="Your mentor"
         subtitle="Someone who believes in you and is here to guide you."
       />
+
+      {mentorRequest && me ? (
+        <MentorRequestCard
+          childName={me.first_name}
+          request={{
+            matchId: mentorRequest.match_id,
+            mentorName: mentorRequest.full_name,
+            profession: mentorRequest.profession,
+            track: mentorRequest.mentor_track,
+            mentorAccepted: mentorRequest.consent_mentor,
+            guardianAccepted: mentorRequest.consent_guardian,
+          }}
+        />
+      ) : null}
 
       {mentor ? (
         <>
@@ -72,7 +91,7 @@ export default async function MentorPage() {
             </p>
           </Card>
         </>
-      ) : (
+      ) : mentorRequest ? null : (
         <EmptyState
           icon={GraduationCap}
           accent="purple"

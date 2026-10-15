@@ -8,7 +8,8 @@ import {
   Compass,
   Sparkles,
 } from "lucide-react";
-import { getMyBeneficiary } from "@/lib/beneficiary/queries";
+import { getMyBeneficiary, getMyMentorRequest } from "@/lib/beneficiary/queries";
+import { MentorRequestCard } from "@/components/beneficiary/mentor-request-card";
 import { STAGE_LABELS, stageProgress } from "@/lib/beneficiary-stages";
 import { STAGE_MESSAGES } from "@/lib/beneficiary/stages";
 import { MIN_AGE } from "@/lib/career/score";
@@ -24,7 +25,7 @@ const LINKS = [
 ] as const;
 
 export default async function BeneficiaryHomePage() {
-  const me = await getMyBeneficiary();
+  const [me, mentorRequest] = await Promise.all([getMyBeneficiary(), getMyMentorRequest()]);
 
   if (!me) {
     return (
@@ -40,6 +41,20 @@ export default async function BeneficiaryHomePage() {
 
   return (
     <div className="flex flex-col gap-5">
+      {mentorRequest ? (
+        <MentorRequestCard
+          childName={me.first_name}
+          request={{
+            matchId: mentorRequest.match_id,
+            mentorName: mentorRequest.full_name,
+            profession: mentorRequest.profession,
+            track: mentorRequest.mentor_track,
+            mentorAccepted: mentorRequest.consent_mentor,
+            guardianAccepted: mentorRequest.consent_guardian,
+          }}
+        />
+      ) : null}
+
       <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-br from-[#087dbd] via-[#0a93d6] to-[#05a9e6] p-6 text-white shadow-[0_12px_25px_#068dd51c]">
         <span
           className="pointer-events-none absolute -top-5 right-3 text-[120px] leading-none text-white/10"

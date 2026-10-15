@@ -1,24 +1,15 @@
-import {
-  Gift,
-  HandHeart,
-  Heart,
-  Home,
-  MessageSquareHeart,
-  TrendingUp,
-  UserCircle,
-} from "lucide-react";
 import { dmSans, manrope } from "@/lib/dashboard-fonts";
 import { getNotificationSummary } from "@/lib/member/queries";
 import { TopNavHeader, type NavTab } from "@/components/shared/top-nav-header";
 
 const TABS: NavTab[] = [
-  { href: "/dashboard/sponsor", label: "Home", icon: Home, exact: true },
-  { href: "/dashboard/sponsor/child", label: "My Child", icon: Heart },
-  { href: "/dashboard/sponsor/progress", label: "Progress", icon: TrendingUp },
-  { href: "/dashboard/sponsor/support", label: "How my support is used", icon: HandHeart },
-  { href: "/dashboard/sponsor/giving", label: "My Giving", icon: Gift },
-  { href: "/dashboard/sponsor/thank-you", label: "Thank-yous", icon: MessageSquareHeart },
-  { href: "/dashboard/sponsor/profile", label: "My Profile", icon: UserCircle },
+  { href: "/dashboard/sponsor", label: "Home", icon: "home", exact: true },
+  { href: "/dashboard/sponsor/child", label: "My Child", icon: "heart" },
+  { href: "/dashboard/sponsor/progress", label: "Progress", icon: "progress" },
+  { href: "/dashboard/sponsor/support", label: "How my support is used", icon: "support" },
+  { href: "/dashboard/sponsor/giving", label: "My Giving", icon: "gift" },
+  { href: "/dashboard/sponsor/thank-you", label: "Thank-yous", icon: "thanks" },
+  { href: "/dashboard/sponsor/profile", label: "My Profile", icon: "profile" },
 ];
 
 // Role/status are enforced by proxy.ts for every /dashboard/sponsor/* route

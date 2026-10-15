@@ -46,7 +46,6 @@ export default async function BeneficiaryProfilePage({
     match,
     messages,
     documents,
-    assignableMentors,
     assessments,
   ] = await Promise.all([
     beneficiary.application_id
@@ -58,9 +57,15 @@ export default async function BeneficiaryProfilePage({
     getMentorshipMatch(id),
     getRecentMessages(id),
     getDocuments(id),
-    getAssignableMentors(),
     getAssessments(id),
   ]);
+
+  // Mentors who are cleared, active and under the mentee cap, ranked by fit
+  // for this child (age group, and the track the career quiz recommended).
+  const assignableMentors = await getAssignableMentors({
+    age: calculateAge(beneficiary.date_of_birth),
+    recommendedTrack: assessments[0]?.recommended_mentor_track ?? null,
+  });
 
   return (
     <div className="flex flex-col gap-5 pt-5">
@@ -161,6 +166,7 @@ export default async function BeneficiaryProfilePage({
           ) : (
             <MentorAssignment
               beneficiaryId={beneficiary.id}
+              childName={beneficiary.first_name}
               match={match}
               mentors={assignableMentors}
             />

@@ -1,5 +1,53 @@
 # TACE Platform — Updates Log
 
+## Oct 16, 2026 — Fix: sponsor dashboard crashed on load
+
+**Symptom:** opening `/dashboard/sponsor` threw "Functions cannot be passed directly to Client Components ... `{$$typeof, render, displayName}`".
+**Cause:** the sponsor layout (a Server Component) built a tabs list containing the lucide icon *components* and passed it to the client-side `TopNavHeader`. Components are functions/objects and can't cross that boundary.
+**Fix:** layouts now pass a plain string key (`icon: "home"`) and `top-nav-header.tsx` looks the icon up in its own registry. I scanned every client component's props for the same pattern: nothing else passes icons or functions across the boundary (the admin sidebar, member sidebar and child header define their icons inside the client file).
+**Verified by actually rendering**, not just compiling (`next build` can't catch this): I ran a production server against a fake Supabase and signed in as each role. All pages rendered with real content and an empty server error log: 7 sponsor, 8 child, 8 member, plus the new admin and mentor pages. No Supabase data or migrations were touched.
+
+## Oct 16, 2026 — Ticket 4B: Mentor vetting, matching & consent
+
+### New migration to run: `supabase/migrations/010_mentor_vetting_and_requests.sql` (after 008/009)
+- `mentors.vetting_checklist` (jsonb). Locked from mentors by the same guard trigger as the other vetting columns.
+- `mentor_requests` view: the calling mentor's **pending** requests (first name, age, interests, aspirations, class, consent flags only). The existing `mentee_profiles` only covers active matches, so a mentor couldn't see who was asking.
+- `my_mentor_request` view: for the child's account, the mentor who is asking (name, profession, track, no contact details).
+- Tested on the in-process Postgres with the rest of the suite: **92 checks pass**, 010 re-run three times cleanly.
+
+### Admin Mentors module (the sidebar link no longer 404s)
+- **List** `/dashboard/admin/mentors`: name, profession, track, vetting, account status, active mentees; filters for track, vetting and account status.
+- **Detail** `/dashboard/admin/mentors/[id]`:
+  - signup details and the **vetting panel**: 4-item checklist, notes, *Save progress*, *Clear* (needs all four ticked), *Reject* (needs a note, asks to confirm). Only these set `vetting_status`, `vetted_by`, `vetted_at`. The mentor is emailed either way.
+  - Rejecting also deactivates the account, ends any open matches and tells those guardians (a child must not stay matched to an uncleared mentor).
+  - **Activate account** is a separate button, allowed only once cleared (server-checked), and emails the mentor.
+  - Mentees and matches with pause / resume / end controls, and a **match creator** (children without an open match, suggested first).
+- **Matching rules** live in one place (`lib/admin/matches-core.ts`) and are used by the mentor page, the child's profile and the application-approval flow: mentor cleared + account active + under the cap of **5** + child has no open match. The database enforces "cleared" and "always starts pending" regardless. Both sides are notified.
+- **Suggestions:** mentors/children are ranked by preferred age group and by the mentor track the child's career quiz recommended, with the reasons shown.
+- The child's admin profile now shows consent progress, pause/resume/end for the current match, and allows a new match after one has ended (previously a finished match blocked this).
+- **Match controls:** pause, resume, end (reason required); the mentor and guardian are notified. A paused or ended match blocks messaging at once (checked in the database tests).
+
+### Mentor side
+- `app/dashboard/mentor/(app)/` is the gate: a mentor who hasn't accepted the **code of conduct** is redirected to `/dashboard/mentor/code-of-conduct` and cannot reach any other mentor page. The screen has the six draft rules (marked "pending legal review"), a required tick and the typed full name (must match the account name); the timestamp is set by the database clock.
+- **Home** shows pending requests (child's first name, age, class, interests, aspirations) with Accept / Decline. This is deliberately minimal; mentees, notes, check-ins, concerns and the profile are Ticket 4C.
+
+### Guardian side
+- A "Mentor request" card on the child's home and My Mentor pages: mentor's name, profession and track, a plain explanation of how messaging is monitored, and Accept / Decline.
+
+### Consent and activation
+- Mentor accepting sets only `consent_mentor`; the guardian only `consent_guardian`; declining ends the request. **Nothing in the app ever sets a match to active**: the database trigger does it when both have accepted and the mentor is cleared. An admin cannot tick consent for anyone.
+- Notifications to the other party go through one narrow service-role helper (`lib/notify.ts`, `server-only`), used only in Server Actions after the caller's own action succeeded under their own permissions (users have no permission to write notifications for other people).
+
+### Behaviour changes to be aware of
+- **Existing mentors are all `pending` vetting** (migration 008), so none can be matched until cleared here. An already-active mentor sees a notice on their home page.
+- The 5-mentee cap counts mentees who are active **or waiting on consent**, so a batch of unanswered requests can't over-allocate someone.
+
+### Verified
+- `tsc`, lint and a production build pass.
+- **Rendered end to end** against a fake Supabase as admin, mentor and child: the mentors list and detail, the child profile with an open match, the mentor home with a request, the code-of-conduct screen, and the guardian card. A mentor who hasn't accepted is redirected to the code-of-conduct screen from `/dashboard/mentor`, and one who has accepted is redirected away from it. The expected content appears on each page.
+- The database rules behind consent, activation, messaging and privacy are covered by the 92 checks.
+- **Not tried against your real Supabase**: run 010, then test a full loop: sign up a mentor, vet and clear them, activate, sign in (code of conduct), match them to a child, accept as the mentor, accept as the child's guardian, confirm the match is active; then pause it and confirm messaging would stop.
+
 ## Oct 15, 2026 — Migration 009: sponsors read donations through a view
 
 **Run `supabase/migrations/009_sponsor_donations_view.sql`** (idempotent; paste only this file). Closes the gap flagged in 4A: the old sponsor policy on `donations` let a sponsor read every column of their own donation rows through the API, including the internal `notes`, `bank_ref`, `logged_by`, donor email/phone, and project/beneficiary ids.

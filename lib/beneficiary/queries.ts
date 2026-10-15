@@ -152,3 +152,15 @@ export async function getMyNotifications(): Promise<NotificationRow[]> {
     .limit(50);
   return data ?? [];
 }
+
+// The mentor asking to guide this child (a pending request), if any. Name,
+// profession and track only; the view exposes no contact details.
+export async function getMyMentorRequest() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("my_mentor_request")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+  return data;
+}

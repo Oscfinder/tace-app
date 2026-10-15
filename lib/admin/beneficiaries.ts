@@ -126,6 +126,8 @@ export type MentorshipMatchInfo = {
   id: string;
   status: string;
   mentorName: string;
+  consentMentor: boolean;
+  consentGuardian: boolean;
 };
 
 export async function getMentorshipMatch(
@@ -135,7 +137,7 @@ export async function getMentorshipMatch(
 
   const { data: match } = await supabase
     .from("mentorship_matches")
-    .select("id, mentor_id, status")
+    .select("id, mentor_id, status, consent_mentor, consent_guardian")
     .eq("beneficiary_id", beneficiaryId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -147,6 +149,8 @@ export async function getMentorshipMatch(
     id: match.id,
     status: match.status,
     mentorName: mentor?.full_name ?? "Unknown mentor",
+    consentMentor: match.consent_mentor ?? false,
+    consentGuardian: match.consent_guardian ?? false,
   };
 }
 
