@@ -36,7 +36,9 @@ export async function getAssignableMentors(): Promise<AssignableMentor[]> {
 
   const { data: mentorRows } = await supabase
     .from("mentors")
-    .select("id, profile_id, profession, mentor_track");
+    .select("id, profile_id, profession, mentor_track")
+    // Only mentors cleared by vetting can be matched (also enforced in the DB).
+    .eq("vetting_status", "cleared");
   const mentors = (mentorRows ?? []).filter(
     (m): m is typeof m & { profile_id: string } => Boolean(m.profile_id),
   );

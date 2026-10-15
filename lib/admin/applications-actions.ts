@@ -120,6 +120,7 @@ export async function approveApplication(input: {
       interests: application.interests,
       aspirations: application.aspirations,
       talents: application.talents,
+      subjects_skills: application.subjects_skills,
       health_conditions: application.health_conditions,
       disabilities: application.disabilities,
       current_stage: input.currentStage,

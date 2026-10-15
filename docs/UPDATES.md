@@ -1,5 +1,32 @@
 # TACE Platform — Updates Log
 
+## Oct 15, 2026 — Ticket 4.0: Phase 4 schema & privacy hardening
+
+New migration **`supabase/migrations/008_phase4_hardening.sql`** (idempotent; paste only this file into the SQL Editor). No frontend. Earlier migrations untouched.
+
+### What it does
+1. **Sponsors and mentors can no longer read `beneficiaries`.** Every SELECT/ALL policy except admin and the child's own record is dropped (done with a loop, so the sponsor/mentor policies go whatever they were called). They get three security-definer views filtered by `auth.uid()`: `sponsor_children`, `mentee_profiles` (active matches only), `sponsor_child_support`. None contains surname, address, phone, email, guardian data, income, health or disabilities.
+2. **Four existing policies depended on that access and would have silently returned nothing**, so they are rewritten to use the views: sponsor's `progress_updates`, sponsor's approved `thank_you_messages`, mentor's `career_assessments`, and the `beneficiary-photos` read policy (now limited to the linked child's own folder).
+3. **Mentor vetting:** `mentors` gets `vetting_status` (pending/cleared/rejected, default pending), `vetting_notes`, `vetted_by`, `vetted_at`, `code_of_conduct_accepted_at`. A guard trigger reverts any change to the vetting columns (and to `profile_id`, `mentor_track`) by anyone but an admin; a mentor can edit their own other details and accept the code of conduct once (stamped by the server clock, never clearable). **Every existing mentor starts as `pending`.**
+4. **Matches and consent:** `mentorship_matches.next_check_in`. A match can only be created for a **cleared** mentor, always as `pending_consent` with no consents (nobody, admin included, can insert an active or pre-consented match). A guard trigger lets the mentor set only their own consent and `next_check_in`, and the child's account only its own consent; consent can't be withdrawn; status is admin-only. A database trigger sets `active` and `started_at` when both consents are true **and** the mentor is cleared; another activates a waiting match if the mentor is cleared after both consented.
+5. **Messaging:** insert only as yourself, on an `active` match, with `sender_type` matching your role (so pending/paused/terminated block sending immediately). Users can't update or delete; admin can change only the flag fields; nobody can change the words. Read: the match's mentor, the child's account, admin. A backstop trigger flags (not rejects) phone numbers, emails, links, bare domains and handles with `flag_reason = 'contact details'`. Length 1–1000. Added to the `supabase_realtime` publication. Read tracking works through `mark_thread_read(match_id)` so nobody needs UPDATE.
+6. **`safeguarding_concerns`** table with RLS: admin all; mentors/sponsors/children's accounts may insert only as themselves, only about a child they are actually connected to, and read back only their own.
+
+### Deviations from the ticket text (please review)
+- **Decline:** the ticket says only admin may change status, but 4B says declining a request sets the match to `terminated`. So a mentor or the child's account may change status only from `pending_consent` to `terminated`, nothing else.
+- **`next_check_in`:** the mentor may set it (4C needs this) while the match is active, in addition to the two consent fields.
+- **`beneficiaries.subjects_skills`** did not exist (only on `applications`), but `mentee_profiles` needs it. Added the column, backfilled it from each child's application, and the approval flow now copies it.
+- `sponsor_child_support` also returns `beneficiary_id` so a sponsor with several children can tell whose support is whose.
+- The admin mentor picker (Ticket 2C) now lists only cleared mentors; previously-assigned flows would otherwise fail with a database error.
+
+### Verified
+Tested for real, not just read: I applied migrations 001–008 to an in-process Postgres with a stubbed Supabase layer (`auth.uid()`, roles, storage tables), ran 008 three times, and ran **77 checks as different users, all passing** — including zero rows from `beneficiaries` for sponsors and mentors, exact view columns, own-children-only, mentor cannot set vetting, activation only when both consented and cleared, cross-guardian and cross-mentor consent attempts rejected, sends blocked when pending/paused/terminated and allowed after resume, contact details flagged, no edits/deletes (admin included), third parties unable to read a thread, and concerns limited to connected children. That stub is close to Supabase but not identical, so still run 008 on your project and spot-check.
+- `tsc`, lint and build pass.
+- One thing that testing revealed and is not changed: re-running **001** after later migrations fails (an old dependency), so keep to the rule of running only the new file.
+
+### Before 4A–4D
+Existing mentors are all `pending`, so none can be matched until cleared in the admin Mentors module (4B). Until that exists, clear one by hand for testing: `update mentors set vetting_status='cleared' where id = '...';`
+
 ## Oct 14, 2026 — Ticket 3A fixes: children count, committee meetings, admin Events and Resources
 
 ### New migration to run: `supabase/migrations/007_events_committee_and_counts.sql`

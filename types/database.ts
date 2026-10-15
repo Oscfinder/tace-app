@@ -145,6 +145,11 @@ export type Database = {
           mentor_track: MentorTrack | null;
           preferred_age_group: string | null;
           motivation: string | null;
+          vetting_status: "pending" | "cleared" | "rejected";
+          vetting_notes: string | null;
+          vetted_by: string | null;
+          vetted_at: string | null;
+          code_of_conduct_accepted_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -182,6 +187,7 @@ export type Database = {
           interests: string | null;
           aspirations: string | null;
           talents: string | null;
+          subjects_skills: string | null;
           health_conditions: string | null;
           disabilities: string | null;
           current_stage: BeneficiaryStage;
@@ -215,6 +221,7 @@ export type Database = {
           started_at: string | null;
           ends_at: string | null;
           termination_reason: string | null;
+          next_check_in: string | null;
           created_at: string;
         };
         Insert: Partial<
@@ -557,8 +564,72 @@ export type Database = {
         >;
         Relationships: [];
       };
+      safeguarding_concerns: {
+        Row: {
+          id: string;
+          raised_by: string;
+          match_id: string | null;
+          beneficiary_id: string;
+          description: string;
+          status: "open" | "reviewing" | "closed";
+          handled_by: string | null;
+          handled_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<
+          Database["public"]["Tables"]["safeguarding_concerns"]["Row"]
+        > & { raised_by: string; beneficiary_id: string; description: string };
+        Update: Partial<
+          Database["public"]["Tables"]["safeguarding_concerns"]["Row"]
+        >;
+        Relationships: [];
+      };
     };
     Views: {
+      sponsor_children: {
+        Row: {
+          id: string;
+          first_name: string;
+          age: number;
+          current_stage: BeneficiaryStage;
+          stage_updated_at: string | null;
+          photo_url: string | null;
+          support_needed: string[] | null;
+          interests: string | null;
+          aspirations: string | null;
+          class_level: string | null;
+        };
+        Relationships: [];
+      };
+      mentee_profiles: {
+        Row: {
+          id: string;
+          first_name: string;
+          age: number;
+          current_stage: BeneficiaryStage;
+          stage_updated_at: string | null;
+          photo_url: string | null;
+          support_needed: string[] | null;
+          interests: string | null;
+          aspirations: string | null;
+          class_level: string | null;
+          edu_status: EduStatus | null;
+          talents: string | null;
+          subjects_skills: string | null;
+          match_id: string;
+        };
+        Relationships: [];
+      };
+      sponsor_child_support: {
+        Row: {
+          beneficiary_id: string;
+          type: string;
+          description: string | null;
+          amount: number | null;
+          given_at: string | null;
+        };
+        Relationships: [];
+      };
       my_mentor: {
         Row: {
           full_name: string;
@@ -599,6 +670,7 @@ export type Database = {
       get_role: { Args: Record<string, never>; Returns: Role };
       get_mentor_id: { Args: Record<string, never>; Returns: string };
       get_sponsor_id: { Args: Record<string, never>; Returns: string };
+      mark_thread_read: { Args: { p_match_id: string }; Returns: undefined };
     };
     Enums: Record<string, never>;
   };
