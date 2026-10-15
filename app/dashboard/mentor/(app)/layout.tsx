@@ -5,6 +5,8 @@ import { TopNavHeader, type NavTab } from "@/components/shared/top-nav-header";
 
 const TABS: NavTab[] = [
   { href: "/dashboard/mentor", label: "Home", icon: "home", exact: true },
+  { href: "/dashboard/mentor/mentees", label: "My Mentees", icon: "mentees" },
+  { href: "/dashboard/mentor/profile", label: "My Profile", icon: "profile" },
 ];
 
 // THE GATE. Every mentor page lives inside this group, so a mentor who hasn't

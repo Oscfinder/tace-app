@@ -9,6 +9,7 @@ import {
   FileText,
   UserPlus,
   Megaphone,
+  ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
 import { StatCard } from "@/components/admin/stat-card";
@@ -17,6 +18,7 @@ import { WelcomeBanner } from "@/components/admin/welcome-banner";
 import { ImpactChart } from "@/components/admin/impact-chart";
 import { UpcomingEventsPanel } from "@/components/admin/upcoming-events-panel";
 import { getSession } from "@/lib/auth/guards";
+import { getOpenConcernCount } from "@/lib/admin/concerns";
 import {
   getAdminDashboardStats,
   getBeneficiaryGrowth,
@@ -49,18 +51,32 @@ function timeAgo(timestamp: string) {
 }
 
 export default async function AdminHomePage() {
-  const [session, stats, activity, growth, upcomingEvents] = await Promise.all([
+  const [session, stats, activity, growth, upcomingEvents, openConcerns] = await Promise.all([
     getSession(),
     getAdminDashboardStats(),
     getRecentActivity(),
     getBeneficiaryGrowth(),
     getUpcomingEvents(),
+    getOpenConcernCount(),
   ]);
 
   const firstName = (session?.profile.full_name ?? "Admin").split(" ")[0];
 
   return (
     <div className="flex flex-col gap-6 pt-5">
+      {openConcerns > 0 ? (
+        <Link
+          href="/dashboard/admin/concerns"
+          className="flex items-center gap-3 rounded-[13px] border border-[#ffd3df] bg-[#fff1f4] px-5 py-4 text-sm font-semibold text-[#c2365c] hover:bg-[#ffe6ec]"
+        >
+          <ShieldAlert className="size-5 shrink-0" />
+          {openConcerns === 1
+            ? "1 safeguarding concern needs attention"
+            : `${openConcerns} safeguarding concerns need attention`}
+          <span className="ml-auto">Review →</span>
+        </Link>
+      ) : null}
+
       <WelcomeBanner firstName={firstName} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,5 +1,40 @@
 # TACE Platform — Updates Log
 
+## Oct 16, 2026 — Ticket 4C: Mentor dashboard
+
+### Migration to run: `supabase/migrations/011_mentor_notes_policy.sql`
+The original policy let a mentor write a note carrying their own id but against **any** match, so they could attach notes to another mentor's child or to a paused or ended match. Now a mentor can insert a note only for their **own, active** match, and notes are **append-only** (no edit or delete for anyone, admin included; admin can read them all). Tested with the rest of the database suite on the in-process Postgres: **111 checks pass**, 011 re-run three times cleanly.
+
+### Mentor pages (`app/dashboard/mentor/(app)/`, behind the code-of-conduct gate)
+- **Home:** four summary cards (active mentees, pending requests, next check-in, unread messages), pending requests with Accept / Decline, upcoming check-ins and mentee cards.
+- **My Mentees:** a card per mentee (photo, first name, age, stage, interests, next check-in).
+- **Mentee page:**
+  - profile from `mentee_profiles`: interests, aspirations, talents, subjects;
+  - **Raise a concern**, prominent at the top;
+  - **Next check-in:** schedule, change or remove;
+  - the child's latest **career quiz** result (read through existing RLS);
+  - the 9-step journey tracker;
+  - **notes form** (topics discussed, improvements, concerns, next steps, check-in date) and the **notes history**.
+- **My Profile:** edit name, phone, availability and expertise. Vetting status, track, profession and age group are read-only (the database trigger also refuses changes).
+- A mentor can only open their own active mentees; any other child id returns a 404.
+- Sources are only the narrow views (`mentee_profiles`, `mentor_requests`), the mentor's own notes and matches, and the child's career assessment. Nothing reads `beneficiaries`, `applications` or guardian details (grep-checked).
+
+### Check-ins
+`mentorship_matches.next_check_in` is set by the mentor (the database allows only the match's mentor, and only on an active match). The child's guardian is notified, and the child's **My Mentor** page now shows the date instead of "Not scheduled yet".
+
+### Concerns
+- **Raise a concern** (mentor) inserts a `safeguarding_concerns` row, which the database allows only for a child the mentor actively mentors, and notifies every admin straight away.
+- **Admin:** new **Safeguarding Concerns** page (sidebar item with an open-count badge, plus a red banner on the admin home when any are open). It shows who raised each concern, about whom, the mentor involved, and the text. Statuses: open → being reviewed → closed (or reopen), recording who handled it and when.
+
+### Left out on purpose
+- **Resources:** the ticket says to reuse the member resources list only if mentors have access. They don't (the resources bucket is readable by active members only), so it is skipped rather than widening access.
+- **Messaging** (the chat itself, and the unread count being non-zero in practice) is Ticket 4D. The home card already counts unread messages from the child's side.
+
+### Verified
+- `tsc`, lint and a production build pass.
+- **Rendered end to end** against a fake Supabase as a mentor, admin and child: every new page loads (home, mentees, a mentee, profile, concerns, the admin home banner, the child's My Mentor), with the right content on each and nothing in the server error log. A child who isn't the mentor's mentee returns 404.
+- **Not tried against your real Supabase:** with a cleared, active mentor and an active match, schedule a check-in and confirm the child's My Mentor page shows it; write a note; raise a concern and confirm an admin is notified and it appears under Concerns; edit the profile.
+
 ## Oct 16, 2026 — Fix: sponsor dashboard crashed on load
 
 **Symptom:** opening `/dashboard/sponsor` threw "Functions cannot be passed directly to Client Components ... `{$$typeof, render, displayName}`".

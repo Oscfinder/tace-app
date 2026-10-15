@@ -164,3 +164,16 @@ export async function getMyMentorRequest() {
     .maybeSingle();
   return data;
 }
+
+// The next check-in the mentor has scheduled for this child's active
+// mentorship, or null. The child's account may read its own child's match.
+export async function getMyNextCheckIn(): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("mentorship_matches")
+    .select("next_check_in")
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+  return data?.next_check_in ?? null;
+}

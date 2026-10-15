@@ -11,7 +11,7 @@ export function JourneyTracker({
   audience = "child",
 }: {
   currentStage: Stage;
-  audience?: "child" | "sponsor";
+  audience?: "child" | "sponsor" | "mentor";
 }) {
   const currentIndex = STAGE_ORDER.indexOf(currentStage);
   const showMessages = audience === "child";

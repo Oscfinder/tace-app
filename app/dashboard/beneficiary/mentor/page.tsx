@@ -1,5 +1,10 @@
 import { CalendarClock, GraduationCap, MessageCircle } from "lucide-react";
-import { getMyBeneficiary, getMyMentor, getMyMentorRequest } from "@/lib/beneficiary/queries";
+import {
+  getMyBeneficiary,
+  getMyMentor,
+  getMyMentorRequest,
+  getMyNextCheckIn,
+} from "@/lib/beneficiary/queries";
 import { MentorRequestCard } from "@/components/beneficiary/mentor-request-card";
 import {
   Card,
@@ -12,10 +17,11 @@ import {
 const TRACKS = { career: "Career guidance", tech: "Technology skills" } as const;
 
 export default async function MentorPage() {
-  const [mentor, mentorRequest, me] = await Promise.all([
+  const [mentor, mentorRequest, me, nextCheckIn] = await Promise.all([
     getMyMentor(),
     getMyMentorRequest(),
     getMyBeneficiary(),
+    getMyNextCheckIn(),
   ]);
 
   return (
@@ -71,7 +77,15 @@ export default async function MentorPage() {
                 value={
                   <span className="inline-flex items-center gap-1.5">
                     <CalendarClock className="size-4 text-[#9277f6]" />
-                    Not scheduled yet
+                    {nextCheckIn
+                      ? new Date(nextCheckIn).toLocaleString("en-NG", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "long",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })
+                      : "Not scheduled yet"}
                   </span>
                 }
               />
