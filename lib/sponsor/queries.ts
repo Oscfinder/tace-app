@@ -6,7 +6,7 @@ import type { Database } from "@/types/database";
 //     sponsor_child_support) — never `beneficiaries` or `applications`;
 //   - progress_updates / thank_you_messages, whose policies already limit a
 //     sponsor to their linked children (and approved messages);
-//   - the sponsor's own donations.
+//   - sponsor_donations: the sponsor's own gifts, safe columns only.
 
 export type SponsorChild = Database["public"]["Views"]["sponsor_children"]["Row"] & {
   photoUrl: string | null;
@@ -16,10 +16,7 @@ export type ProgressRow = Pick<
   "id" | "beneficiary_id" | "title" | "content" | "created_at"
 >;
 export type SupportRow = Database["public"]["Views"]["sponsor_child_support"]["Row"];
-export type DonationRow = Pick<
-  Database["public"]["Tables"]["donations"]["Row"],
-  "id" | "amount" | "currency" | "purpose" | "receipt_sent" | "receipt_sent_at" | "created_at"
->;
+export type DonationRow = Database["public"]["Views"]["sponsor_donations"]["Row"];
 export type ThankYouRow = Pick<
   Database["public"]["Tables"]["thank_you_messages"]["Row"],
   "id" | "beneficiary_id" | "content" | "created_at"
@@ -87,32 +84,15 @@ export async function getSupportUsed(): Promise<SupportRow[]> {
   return data ?? [];
 }
 
-// Explicit columns on purpose: the donations row also holds internal notes,
-// the bank reference and who logged it, which a sponsor has no need to see.
-export async function getMyDonations(sponsorId?: string): Promise<DonationRow[]> {
+// The sponsor_donations view returns only the sponsor's own gifts and only
+// safe columns; the sponsor has no direct access to the donations table.
+export async function getMyDonations(): Promise<DonationRow[]> {
   const supabase = await createClient();
-  let query = supabase
-    .from("donations")
-    .select("id, amount, currency, purpose, receipt_sent, receipt_sent_at, created_at")
-    .order("created_at", { ascending: false });
-  // RLS already restricts to the caller's own donations; this is belt and braces.
-  if (sponsorId) query = query.eq("sponsor_id", sponsorId);
-  const { data } = await query;
-  return data ?? [];
-}
-
-export async function getMySponsorId(): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
   const { data } = await supabase
-    .from("sponsors")
-    .select("id")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-  return data?.id ?? null;
+    .from("sponsor_donations")
+    .select("*")
+    .order("created_at", { ascending: false });
+  return data ?? [];
 }
 
 export async function getApprovedThankYous(): Promise<ThankYouRow[]> {

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Gift, Heart, TrendingUp, Users } from "lucide-react";
 import {
   getMyDonations,
-  getMySponsorId,
   getProgressUpdates,
   getSponsorChildren,
   getSponsorProfile,
@@ -23,12 +22,11 @@ const naira = new Intl.NumberFormat("en-NG", {
 });
 
 export default async function SponsorHomePage() {
-  const sponsorId = await getMySponsorId();
   const [profile, children, updates, donations] = await Promise.all([
     getSponsorProfile(),
     getSponsorChildren(),
     getProgressUpdates(),
-    getMyDonations(sponsorId ?? undefined),
+    getMyDonations(),
   ]);
 
   const firstName = profile?.full_name.split(" ")[0] ?? "there";

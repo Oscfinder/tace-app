@@ -620,6 +620,18 @@ export type Database = {
         };
         Relationships: [];
       };
+      sponsor_donations: {
+        Row: {
+          id: string;
+          amount: number;
+          currency: string;
+          purpose: string | null;
+          receipt_sent: boolean;
+          receipt_sent_at: string | null;
+          created_at: string;
+        };
+        Relationships: [];
+      };
       sponsor_child_support: {
         Row: {
           beneficiary_id: string;

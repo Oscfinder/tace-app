@@ -1,5 +1,5 @@
 import { Gift, Receipt } from "lucide-react";
-import { getMyDonations, getMySponsorId } from "@/lib/sponsor/queries";
+import { getMyDonations } from "@/lib/sponsor/queries";
 import { BankDetailsCard } from "@/components/sponsor/bank-details-card";
 import {
   EmptyState,
@@ -17,9 +17,8 @@ const naira = new Intl.NumberFormat("en-NG", {
 });
 
 export default async function GivingPage() {
-  const sponsorId = await getMySponsorId();
-  // Only this sponsor's own donations (RLS + an explicit sponsor_id filter).
-  const donations = await getMyDonations(sponsorId ?? undefined);
+  // Only this sponsor's own gifts, through the sponsor_donations view.
+  const donations = await getMyDonations();
   const total = donations.reduce((sum, d) => sum + Number(d.amount), 0);
 
   return (

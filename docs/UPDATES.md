@@ -1,5 +1,22 @@
 # TACE Platform — Updates Log
 
+## Oct 15, 2026 — Migration 009: sponsors read donations through a view
+
+**Run `supabase/migrations/009_sponsor_donations_view.sql`** (idempotent; paste only this file). Closes the gap flagged in 4A: the old sponsor policy on `donations` let a sponsor read every column of their own donation rows through the API, including the internal `notes`, `bank_ref`, `logged_by`, donor email/phone, and project/beneficiary ids.
+
+### What changed
+- New security-definer view **`sponsor_donations`**, filtered by `get_sponsor_id()`, granted to `authenticated` only. Columns: `id, amount, currency, purpose, receipt_sent, receipt_sent_at, created_at`. Nothing else.
+- The sponsor's direct SELECT policy on `donations` (`donations_sponsor_select`) is dropped. The admin policy stays.
+- The sponsor dashboard (Home total, My Giving) now reads `sponsor_donations`. The now-unneeded `getMySponsorId` plumbing was removed.
+
+### Checked before dropping the policy
+Every reader of `donations` was reviewed: the admin pages, the 2E receipt sender and the `sponsors.total_donated` recompute all run as admin (admin policy, unchanged); the public landing page uses the service-role client (unchanged); `project_funding` is a security-definer view (unchanged). The only sponsor-side reader was the new dashboard, which is switched over. **`sponsors.total_donated`** keeps working exactly as before: the admin action recomputes it from a SUM over the table (no read-then-write), and a sponsor's own total on the dashboard is a SUM over the view.
+
+### Verified
+- Tested on the in-process Postgres (same method as 4.0): 23 checks, all passing, with 009 applied three times. As a sponsor, `select * from donations` returns 0 rows (and `notes`/`bank_ref`/`logged_by` are unreadable); `sponsor_donations` returns only their own gifts with exactly the listed columns; a second sponsor sees none of the first's gifts; members, mentors and anonymous visitors get nothing; sponsors can't insert, update or delete donations; admin still reads every column, recomputes the total, and marks receipts sent (and the sponsor then sees that receipt as sent); `project_funding` still works for members.
+- The 77-check suite from 4.0 still passes. `tsc`, lint and build pass.
+- Not tried with a live sponsor login: check My Giving and Home totals after running 009.
+
 ## Oct 15, 2026 — Ticket 4A: Sponsor dashboard
 
 Built `app/dashboard/sponsor/` on the migration 008 views (**run 008 first**). Same visual system as the member/beneficiary dashboards, with the simple top navigation (scrollable on phones), notification bell and sign-out confirmation.
