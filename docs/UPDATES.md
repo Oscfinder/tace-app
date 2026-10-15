@@ -1,5 +1,37 @@
 # TACE Platform — Updates Log
 
+## Oct 15, 2026 — Ticket 4A: Sponsor dashboard
+
+Built `app/dashboard/sponsor/` on the migration 008 views (**run 008 first**). Same visual system as the member/beneficiary dashboards, with the simple top navigation (scrollable on phones), notification bell and sign-out confirmation.
+
+### Pages
+- **Home:** total given, number of children, and a card per linked child (photo via signed URL, first name, age, current step, latest update). With no linked child it explains that an admin links a child after the first transfer is confirmed, and shows the bank details.
+- **My Child:** profile from `sponsor_children` (age, class, support needed, interests, aspirations) and the 9-step journey tracker.
+- **Progress:** progress updates per child, newest first.
+- **How my support is used:** from `sponsor_child_support` — type, description, amount, date, with a total per child.
+- **My Giving:** the sponsor's own donations (date, amount, purpose, receipt sent/pending), total donated, and a bank-transfer card with a copy button. Bank transfer only; no card or Paystack flow.
+- **Thank-yous:** approved messages from their child only.
+- **My Profile:** edit name and phone (email read-only; role and status protected by the database trigger).
+- **Stage change:** when an admin changes a linked child's stage, the sponsor now also gets a notification (Ticket 2C action).
+
+### Reuse
+- The journey tracker moved to `components/shared/journey-tracker.tsx` and is used by both the child's My Journey page and the sponsor's My Child page (the sponsor version shows labels only, not the child-addressed lines).
+- `components/shared/top-nav-header.tsx` is a generic top-nav header, ready for the mentor dashboard (4C).
+
+### Privacy
+- No sponsor page queries `beneficiaries` or `applications` (grep-checked). Sources: `sponsor_children`, `sponsor_child_support`, `progress_updates`, `thank_you_messages` (approved only, by RLS and the query), `donations` (own only, explicit columns) and the sponsor's own profile.
+- The donations query selects only id, amount, currency, purpose and receipt fields, not the internal notes, bank reference or who logged it.
+- A child's photo only shows once it lives under `{child_id}/` (after approval moves it).
+
+### Setup
+Add `NEXT_PUBLIC_BANK_ACCOUNT_NUMBER` (and optionally `NEXT_PUBLIC_BANK_NAME`, `NEXT_PUBLIC_BANK_ACCOUNT_NAME`) in `.env.local` and Vercel. Without the number the card says bank details are coming soon.
+
+### Known gap (not part of this ticket)
+The existing donations policy gives a sponsor their own donation **rows**, so someone calling the Supabase API directly could also read the internal `notes`, `bank_ref` and `logged_by` columns of their own donations. The dashboard never asks for them, but a `sponsor_donations` view (like the others in 008) would close it. Say the word and I'll add it as a small migration.
+
+### Verified
+`tsc`, lint and build pass. The privacy rules behind it (own children only, approved thank-yous only, no `beneficiaries` access) were tested in the 008 migration checks. Not tried with a real sponsor login: with two sponsors and two children, check each sees only their own child and gifts, that a pending thank-you message is invisible, and that a pending sponsor is sent to /pending. Link a child to a sponsor by setting `beneficiaries.sponsor_id`.
+
 ## Oct 15, 2026 — Ticket 4.0: Phase 4 schema & privacy hardening
 
 New migration **`supabase/migrations/008_phase4_hardening.sql`** (idempotent; paste only this file into the SQL Editor). No frontend. Earlier migrations untouched.

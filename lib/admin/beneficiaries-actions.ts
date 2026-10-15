@@ -48,7 +48,7 @@ export async function updateBeneficiaryStage(input: {
   // notification must not make it look like it failed.
   const { data: child } = await supabase
     .from("beneficiaries")
-    .select("profile_id, first_name")
+    .select("profile_id, first_name, sponsor_id")
     .eq("id", input.beneficiaryId)
     .maybeSingle();
   if (child?.profile_id) {
@@ -60,6 +60,28 @@ export async function updateBeneficiaryStage(input: {
     });
     if (notifyError) {
       console.error("Stage-change notification failed:", notifyError.message);
+    }
+  }
+
+  // And the sponsor, if the child has one (best-effort, same reasoning).
+  if (child?.sponsor_id) {
+    const { data: sponsor } = await supabase
+      .from("sponsors")
+      .select("profile_id")
+      .eq("id", child.sponsor_id)
+      .maybeSingle();
+    if (sponsor?.profile_id) {
+      const { error: sponsorNotifyError } = await supabase
+        .from("notifications")
+        .insert({
+          profile_id: sponsor.profile_id,
+          title: `${child.first_name} reached a new step 🎉`,
+          body: `${child.first_name} is now at: ${STAGE_LABELS[input.newStage] ?? input.newStage}. Thank you for making this possible.`,
+          type: "stage_change",
+        });
+      if (sponsorNotifyError) {
+        console.error("Sponsor stage notification failed:", sponsorNotifyError.message);
+      }
     }
   }
 
