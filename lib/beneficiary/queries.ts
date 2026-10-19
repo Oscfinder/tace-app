@@ -7,8 +7,9 @@ import type { Database } from "@/types/database";
 
 export type Stage =
   Database["public"]["Tables"]["beneficiaries"]["Row"]["current_stage"];
-export type InterventionRow =
-  Database["public"]["Tables"]["interventions"]["Row"];
+// From the my_support view: the child's own support records WITHOUT the
+// internal staff notes (the underlying table is not readable by the child).
+export type InterventionRow = Database["public"]["Views"]["my_support"]["Row"];
 export type ProgressRow =
   Database["public"]["Tables"]["progress_updates"]["Row"];
 export type NotificationRow =
@@ -68,7 +69,7 @@ export async function getMySupport(
 ): Promise<InterventionRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("interventions")
+    .from("my_support")
     .select("*")
     .eq("beneficiary_id", beneficiaryId)
     .order("given_at", { ascending: false, nullsFirst: false })

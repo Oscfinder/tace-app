@@ -1,5 +1,96 @@
 # TACE Platform — Updates Log
 
+## Oct 19, 2026 — Ticket 5B: Security & privacy audit (IN PROGRESS, handoff notes)
+
+**Another agent will pick this up on a different machine. Read this whole entry first. Phase 5 spec: `docs/PHASE_5.md`. 5A is done (entry below). 5B is about half done; 5C, 5D and 5E have not been started.**
+
+### Migrations to run in Supabase, in this order (after 013)
+- `014_rate_limits.sql`: rate limiter table and function (service role only).
+- `015_security_audit_fixes.sql`: see "Row-level security findings" below.
+
+Both are idempotent. `npm run test:db` (new, needs no Docker) applies all migrations 001 to 015 to an in-process Postgres and runs **164 checks, all passing**, including new ones for 013, 014 and 015.
+
+### Done in 5B (code is in the repo; tsc, lint and build pass)
+
+1. **Server Action audit (deliverable 3).** All 71 Server Actions were listed and reviewed (method: grep every `"use server"` file for `export async function`, check each one calls `requireRole`, `requireAuth` or `getUser`, and parses its input). Every action checks identity and role on the server. About 30 admin actions had **no input validation**; they now validate with Zod via `lib/admin/schemas.ts` (UUIDs, lengths, numbers, enums) and return "Invalid request." The public sign-up, sign-in and password actions now re-validate on the server with the same schemas as the forms (`lib/validations/auth.ts` got maximum lengths). `markNotificationRead` now requires a signed-in user and a valid id. A helper that uses the service role (`getSignupReference`) now checks for admin itself. **Still to write: the action-by-action report table** (action, check present, fixed). This paragraph is the raw material.
+2. **Secrets audit (deliverable 4).** The repo and its full git history were searched for key-shaped strings and committed `.env` files: none (only `.env.example`, which holds names with empty values). No `NEXT_PUBLIC_` variable holds a secret. The service-role client (`lib/supabase/admin.ts`) is imported only by server code (no `"use client"` file imports it). **Rotation list:** (a) the GitHub personal access token that was pasted into chat sessions, (b) any API key (Gemini, Resend, Supabase service role) that was ever pasted into a chat, (c) all keys again before launch if production reuses the test project.
+3. **Security headers and CSP (deliverable 5).** `next.config.ts` sets X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, HSTS and COOP, and removes `X-Powered-By`. `proxy.ts` plus `lib/security/csp.ts` set a Content-Security-Policy with a fresh script nonce per request (`'strict-dynamic'`). `app/layout.tsx` now awaits `headers()` so every page renders per request (a pre-built page would have no nonce and its scripts would be blocked). Verified in real headless Edge: zero CSP violations on login, signup, donate, home, the admin pages and the sponsor dashboard, and a negative-control page proved that violations are detected. `style-src` keeps `'unsafe-inline'` because React writes `style=""` attributes (documented in `lib/security/csp.ts`). If a future feature loads another outside origin (analytics, a map, Paystack), add it there. **Not yet done:** a header-scanner run against the live URL (do it after deploy).
+4. **Rate limits (deliverable 5).** `lib/security/rate-limit.ts` plus migration 014: login (per IP and per email), sign-up, forgot-password (per IP and per email). It fails open if the limiter itself errors (logged). It needs `IP_HASH_SALT` set in production or limiting is off (logged loudly). **There is no public contact form or donate-receipt form yet** (those pages are still empty folders), so `LIMITS.contactIp` and `LIMITS.receiptIp` exist but are not wired in: call `allowAttempt(...)` in those forms' actions when they are built.
+5. **Admin two-factor (deliverable 6).** Supabase MFA with an authenticator app. `/admin-2fa` (`components/forms/two-factor-form.tsx`) enrols or verifies. It is enforced in two places: `proxy.ts` (any `/dashboard/admin` page) and `requireRole("admin")` in `lib/auth/guards.ts` (every admin Server Action and the CSV export route, because an action can be POSTed to any URL). Another admin can clear a locked-out admin's factor from Settings (Reset 2FA, audit-logged); an admin cannot reset their own.
+   - **Before relying on it:** in the Supabase dashboard, check that MFA (TOTP) is enabled (it is on by default on hosted projects).
+   - **First deploy warning:** the only admin will be sent to `/admin-2fa` and must enrol straight away. If enrolment is broken they are locked out of admin until the code is fixed or the factor is cleared from the Supabase dashboard. The fake-Supabase tests could only prove the redirect and the gate (a session without `aal2` is refused; with it, allowed), **not the real enrol and verify steps, which need the real Supabase.** Create a second admin (Settings, Invite admin) after enrolling.
+   - **Residual risk, to accept in writing or fix later:** the database itself does not require `aal2`, so an admin who is only half signed in could still call the REST API directly with their token. Fixing it means making `get_role()` return admin only for `aal2` sessions, which is risky without a tested recovery path.
+6. **Open redirect, XSS and injection (deliverable 7).** Real bug fixed: `/auth/confirm` accepted `next=/\evil.com` (a backslash is read as a slash, so it redirected off-site) and `/..//evil.com`. New `lib/security/safe-redirect.ts` (`safeNextPath`, tested against 12 inputs) and an allow-list for the OTP `type`. Other redirects use fixed paths. Real bug fixed: applicant-typed names and reasons were put into email HTML unescaped (approval, rejection, member and sponsor approval, receipt); now escaped with `lib/email/escape.ts`. There is no `dangerouslySetInnerHTML`, `innerHTML` or `eval` anywhere in the app. All database access uses the Supabase client (parameterised); the only `.rpc` calls are fixed function names. File names from uploads are now sanitised before use in storage paths (`safeFileName`), and beneficiary ids in upload paths must be UUIDs.
+7. **Row-level security findings, fixed in migration 015** (found by reading every table, view, policy and storage rule; now covered by the 23 new checks in the "015" section of `supabase/tests/db_tests.mjs`):
+   - **HIGH:** `get_role()`, `get_mentor_id()` and `get_sponsor_id()` ignored `profiles.status`, so a **suspended or inactive admin kept full database access** through the API (and a pending user kept role-based reads). They now require an active account. Because that makes `get_role()` null for non-active users, the profile privilege guard (`<> 'admin'`, null means skipped) would have let a pending user promote themselves; it is rewritten so only the service role (`auth.uid()` null) skips it.
+   - **MEDIUM:** `events` (which hold meeting minutes) were readable by every signed-in account, including children, sponsors and mentors. Now members and admins only.
+   - **MEDIUM:** a child's account could read the internal staff notes on its own support records (`interventions.notes`). It now reads the `my_support` view (no notes); `getMySupport` uses it.
+   - **LOW:** anon and authenticated had INSERT, UPDATE and DELETE on the `public_beneficiaries` view and TRUNCATE (which skips RLS) on every table. Revoked, and for future tables through default privileges.
+   - **LOW:** buckets `documents`, `certificates` and `public-assets` had no size or type limit. Now 5 MB and PDF/JPG/PNG (public-assets: JPG/PNG/WebP).
+8. **Storage audit (deliverable 2), partly done.** All storage policies were read. Private buckets: avatars, beneficiary-photos, certificates, documents, resources (all `public=false`). `public-assets` is public by design (story photos). All 12 `createSignedUrl` calls use 3600 seconds (exactly one hour, the stated maximum). One accepted risk: anonymous visitors can upload a JPG or PNG (max 5 MB) to `beneficiary-photos/applications/...` before the application row exists (needed for the apply form); this cannot overwrite anything, and the nightly orphan cleanup from 5A removes unused files after 7 days. **Still to write: an automated bucket-by-role test** (list, read, upload, overwrite, delete) using the `storage.objects` stub in `supabase/tests/db_tests.mjs`.
+
+### Left to do in 5B (in this order)
+
+1. **`supabase/tests/rls_audit.mjs`** (deliverable 1): a pass/fail table for every table and view for each of: anon, member, sponsor, mentor, beneficiary A, beneficiary B, admin. Use the seed code in `db_tests.mjs` as a starting point, and add a seeded row to EVERY table so "sees nothing" is not vacuous. Generic checks worth writing:
+   - every public table has RLS on;
+   - a non-admin DELETE affects 0 rows everywhere (wrap in a transaction and roll back);
+   - a non-admin UPDATE affects 0 rows except on the intended own-row tables (profiles, mentors, mentorship_matches, notifications, committee_updates, event_rsvps);
+   - anon sees only `public_beneficiaries`, published stories and projects (and their `project_beneficiaries`) and `site_settings`;
+   - a user cannot change their own role, status, member_type, trustee_role, committee or profile_completed;
+   - no cross-user reads of notifications, messages or concerns;
+   - suspended and pending users lose role-based access.
+   Add a `"test:rls"` script to `package.json` and plan to run it in CI in 5D.
+2. **Storage test** (see item 8 above).
+3. **Data protection pack (deliverable 8):** write `docs/DATA_PROTECTION.md` (what personal data is collected and why; where it is stored; who can see it by role; retention periods; how an access or deletion request is handled; outside services that receive data: Supabase, Vercel, Resend, and Google for sign-in and the Gemini career quiz). Add an **admin tool to export or delete one beneficiary's data**, with an audit-log entry (`logAudit` in `lib/admin/audit.ts`). Deletion must also remove the child's photo, certificates and documents from storage and their auth user. Ask Simon before deleting safeguarding records; they may need to be kept or anonymised on the legal trustee's advice.
+4. **AI provider check (deliverable 9):** `lib/career/ai.ts` should send no identifiers (it is designed that way; re-verify with `CAREER_DEBUG_LOG=1`). Use a paid Gemini tier whose terms say customer data is not used for training, and add a clear sentence about it to the privacy page. The privacy page does not exist yet: `/privacy`, `/terms` and `/child-protection-policy` are Phase 5 prerequisites.
+5. Write the final **5B audit report** (the RLS table, the Server Action table, the secrets result, anything accepted) and a short note for Simon: the legal trustee must review `docs/DATA_PROTECTION.md` and the privacy, terms and child-protection pages, and confirm whether the foundation must register under the Nigeria Data Protection Act 2023.
+
+### Known issues found along the way (not 5B; do not forget)
+
+- **Hydration mismatch on every admin page** at narrow widths (React error #418): the shadcn `Sidebar` renders a different tree on the server than on the client when the viewport is mobile-sized (`useIsMobile`). It was already there and is not caused by the security work. It belongs in 5D (mobile pass).
+- The public `/sponsor` page returns 404: the public pages are not built yet (see the prerequisites in PHASE_5.md).
+
+### Things Simon must do (in order)
+
+1. Run migrations **014** and **015** in the Supabase SQL editor (after 013 from the 5A entry).
+2. Set **`IP_HASH_SALT`** (a long random string) and **`CRON_SECRET`** in Vercel. Without the first, rate limiting is off; without the second, the nightly photo cleanup does nothing.
+3. Confirm MFA (TOTP) is enabled in the Supabase project, then sign in as admin and complete `/admin-2fa` straight away, then invite a second admin.
+4. Rotate the exposed GitHub token and any pasted API keys (see the rotation list).
+
+### How to test locally
+
+- `npm run test:db` runs the database checks (no Supabase needed).
+- `scripts/render-test/README.md` explains the fake-Supabase render tests and the headless-browser CSP check. All the new routes and pages were rendered with them: finance, reports, settings, audit, donate, admin-2fa.
+- The CSV export route's own 401/403/aal2 checks were run directly against the route code with stubbed dependencies (9 cases, all correct): not signed in gives 401; a sponsor, mentor, child, suspended admin, pending admin, missing profile row, and an admin without 2FA all give 403 with no data and no query; an active admin with 2FA gets 200 and an audit entry. Those stubs were throwaway and are not in the repo.
+
+## Oct 17, 2026 — Ticket 5A: Carry-over completion (Finance, Reports, Settings, Audit log, photo cleanup)
+
+### Migration to run: `supabase/migrations/013_admin_tools.sql`
+Safe to re-run. Tested on the in-process Postgres with 001–013: **141 checks pass**, 013 run three times.
+- **`site_settings`** table (six fixed keys only: foundation name, CAC number, bank name, account name, account number, contact email). Anyone can read the public rows; only an admin can write. A CHECK refuses any other key, so a secret can't be stored there by mistake.
+- **`audit_log` is now append-only.** Admins can read it and add rows (only in their own name). Nobody can edit or delete a row, not even an admin.
+- Indexes for the audit viewer and the finance filters.
+
+### What was built
+- **Finance & Donations** (`/dashboard/admin/finance`): table of every donation (date, donor, sponsor, project, child, amount, purpose, receipt), filters for dates, sponsor, project and receipt status, totals for the filtered set, Log donation and Send receipt (the existing actions), and **Export CSV**. The export is a server route that checks the caller is an active admin, applies the same filters as the page, never includes donor email or phone, neutralises spreadsheet formulas (a donor named `=HYPERLINK(...)` is exported as plain text), and writes an audit entry. It refuses (413) rather than silently cutting off above 5,000 rows.
+- **Reports** (`/dashboard/admin/reports`): applications by status per month (6 months), children by stage, active mentors and matches, donations per month, sponsored versus unsponsored. Counts and sums only, no names. Print button with a clean printable layout (sidebar and top bar hidden).
+- **Settings** (`/dashboard/admin/settings`): foundation details, the admin list (with a warning when there is only one admin) and **Invite admin**, a Server Action that requires an active admin, creates the account with the service role, sets the role, and emails a set-password link. There is no public route for it.
+- **Bank details now come from Settings.** The sponsor bank card (home and My Giving) reads them from the database. Until a value is entered in Settings, the old `NEXT_PUBLIC_BANK_*` variables are used as a fallback, so nothing breaks during the switch. You can delete those variables once Settings is filled in.
+- **A basic `/donate` page** was added because it did not exist yet (the folder was empty). It shows the same bank card from Settings and the contact email. The full public donate page is still a Phase 5 prerequisite.
+- **Orphaned photo cleanup:** deletes `beneficiary-photos/applications/{id}/...` files older than 7 days whose application id has no row. A "Clean up now" button on Settings, plus a nightly job (`vercel.json`, 03:00 UTC, `/api/cron/cleanup-photos`). The job refuses any request without `Authorization: Bearer $CRON_SECRET`, and refuses all requests if `CRON_SECRET` is not set.
+- **Audit log viewer** (`/dashboard/admin/audit`): read-only, filter by admin, action and date, 50 per page. Added to the sidebar.
+- **Actions now written to the audit log** (ids and short reasons only, never names, emails or message text): application approved / rejected / flagged, member activated / deactivated, sponsor activated, mentor cleared / rejected / account activated, match created / paused / resumed / terminated, message flagged / unflagged (already existed), stage changed, concern status changed, donation logged, receipt sent, donations exported, settings changed (key names only), admin invited, photo cleanup run.
+
+### You need to do
+1. Run `013_admin_tools.sql` in the Supabase SQL editor.
+2. In Vercel, add an environment variable **`CRON_SECRET`** (any long random string). Without it the nightly cleanup returns 401 and does nothing. Vercel sends it automatically on cron calls.
+3. Open Admin > Settings and enter the real bank details.
+
+### Not verified here (needs the real Supabase)
+- The photo cleanup against real storage (listing folders, the `created_at` check, deletion). The logic is written against the storage API but only the cron's refusal of unauthorised calls was exercised.
+- Invite admin end to end (account creation and the email). 
+- Date filters were checked by reading the query, not against real timestamps (the test fake ignores them).
+
 ## Oct 16, 2026 — Ticket 4D: Monitored messaging (completes Phase 4)
 
 ### Migration to run: `supabase/migrations/012_messaging_limits_and_holds.sql`

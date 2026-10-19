@@ -5,8 +5,8 @@ import { z } from "zod";
 const nigerianPhoneRegex = /^(\+?234|0)[789][01]\d{8}$/;
 
 export const loginSchema = z.object({
-  email: z.string().email("Enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: z.string().trim().email("Enter a valid email address").max(200),
+  password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password is too long"),
 });
 
 export const COMMITTEE_PREFERENCES = [
@@ -37,16 +37,16 @@ export const trusteeRoleSchema = z.enum(TRUSTEE_ROLES);
 
 export const memberSignupSchema = z
   .object({
-    full_name: z.string().min(2, "Enter your full name"),
-    email: z.string().email("Enter a valid email address"),
+    full_name: z.string().trim().min(2, "Enter your full name").max(120, "That name is too long"),
+    email: z.string().trim().email("Enter a valid email address").max(200),
     phone: z
       .string()
       .regex(nigerianPhoneRegex, "Enter a valid Nigerian phone number"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
-    confirm_password: z.string(),
-    occupation: z.string().min(1, "Enter your occupation"),
-    committee_preference: z.string().min(1, "Select a committee"),
-    reason_for_joining: z.string().min(1, "Tell us why you want to join"),
+    password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password is too long"),
+    confirm_password: z.string().max(72),
+    occupation: z.string().min(1, "Enter your occupation").max(120),
+    committee_preference: z.string().min(1, "Select a committee").max(100),
+    reason_for_joining: z.string().min(1, "Tell us why you want to join").max(2000),
   })
   .refine((data) => data.password === data.confirm_password, {
     message: "Passwords do not match",
@@ -55,13 +55,13 @@ export const memberSignupSchema = z
 
 export const sponsorSignupSchema = z
   .object({
-    full_name: z.string().min(2, "Enter your full name"),
-    email: z.string().email("Enter a valid email address"),
+    full_name: z.string().trim().min(2, "Enter your full name").max(120, "That name is too long"),
+    email: z.string().trim().email("Enter a valid email address").max(200),
     phone: z
       .string()
       .regex(nigerianPhoneRegex, "Enter a valid Nigerian phone number"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
-    confirm_password: z.string(),
+    password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password is too long"),
+    confirm_password: z.string().max(72),
     beneficiary_id: z.string().uuid().optional(),
   })
   .refine((data) => data.password === data.confirm_password, {
@@ -85,21 +85,21 @@ export const MENTOR_AGE_GROUPS = [
 
 export const mentorSignupSchema = z
   .object({
-    full_name: z.string().min(2, "Enter your full name"),
-    email: z.string().email("Enter a valid email address"),
+    full_name: z.string().trim().min(2, "Enter your full name").max(120, "That name is too long"),
+    email: z.string().trim().email("Enter a valid email address").max(200),
     phone: z
       .string()
       .regex(nigerianPhoneRegex, "Enter a valid Nigerian phone number"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
-    confirm_password: z.string(),
+    password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password is too long"),
+    confirm_password: z.string().max(72),
     mentor_track: z.enum(MENTOR_TRACKS, {
       message: "Select a mentorship track",
     }),
-    profession: z.string().min(1, "Enter your profession"),
-    expertise: z.string().optional(),
+    profession: z.string().min(1, "Enter your profession").max(120),
+    expertise: z.string().max(300).optional(),
     availability: z.enum(MENTOR_AVAILABILITY).optional(),
     preferred_age_group: z.enum(MENTOR_AGE_GROUPS).optional(),
-    motivation: z.string().min(1, "Tell us why you want to mentor"),
+    motivation: z.string().min(1, "Tell us why you want to mentor").max(2000),
   })
   .refine((data) => data.password === data.confirm_password, {
     message: "Passwords do not match",
@@ -123,7 +123,7 @@ export const completeProfileSchema = z.discriminatedUnion("role", [
     ...completeProfileBase,
     role: z.literal("member"),
     occupation: z.string().trim().min(1, "Enter your occupation"),
-    committee_preference: z.string().min(1, "Select a committee"),
+    committee_preference: z.string().min(1, "Select a committee").max(100),
     reason_for_joining: z.string().trim().min(1, "Tell us why you want to join"),
   }),
   z.object({
@@ -137,7 +137,7 @@ export const completeProfileSchema = z.discriminatedUnion("role", [
       message: "Select a mentorship track",
     }),
     profession: z.string().trim().min(1, "Enter your profession"),
-    expertise: z.string().optional(),
+    expertise: z.string().max(300).optional(),
     availability: z.enum(MENTOR_AVAILABILITY).optional(),
     preferred_age_group: z.enum(MENTOR_AGE_GROUPS).optional(),
     motivation: z.string().trim().min(1, "Tell us why you want to mentor"),

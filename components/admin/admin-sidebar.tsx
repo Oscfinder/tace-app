@@ -21,6 +21,7 @@ import {
   MessageSquareHeart,
   ShieldAlert,
   MessagesSquare,
+  ScrollText,
   LogOut,
   ChevronRight,
 } from "lucide-react";
@@ -137,6 +138,7 @@ export function AdminSidebar({
       icon: FolderOpen,
     },
     { href: "/dashboard/admin/reports", label: "Reports", icon: LineChart },
+    { href: "/dashboard/admin/audit", label: "Audit Log", icon: ScrollText },
     { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
   ];
 

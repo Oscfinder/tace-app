@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { logAudit } from "@/lib/admin/audit";
 import { createMatchCore } from "@/lib/admin/matches-core";
 import type { Database } from "@/types/database";
 
@@ -22,13 +23,17 @@ export async function createMatch(input: {
   beneficiaryId: string;
   mentorId: string;
 }): Promise<ActionResult> {
-  await requireRole("admin");
+  const session = await requireRole("admin");
   if (!uuid.safeParse(input.beneficiaryId).success || !uuid.safeParse(input.mentorId).success) {
     return { error: "Invalid request." };
   }
   const supabase = await createClient();
   const result = await createMatchCore(supabase, input);
   if ("error" in result) return result;
+  await logAudit(supabase, session.user.id, "match_created", "mentorship_match", result.matchId, {
+    beneficiary_id: input.beneficiaryId,
+    mentor_id: input.mentorId,
+  });
   refresh(input.beneficiaryId, input.mentorId);
   return { success: true };
 }
@@ -53,7 +58,7 @@ export async function setMatchStatus(input: {
   action: "pause" | "resume" | "terminate";
   reason?: string;
 }): Promise<ActionResult> {
-  await requireRole("admin");
+  const session = await requireRole("admin");
   const parsed = statusSchema.safeParse(input);
   if (!parsed.success) return { error: "Invalid request." };
   const { matchId, action, reason } = parsed.data;
@@ -83,6 +88,11 @@ export async function setMatchStatus(input: {
   }
   const { error } = await supabase.from("mentorship_matches").update(update).eq("id", matchId);
   if (error) return { error: error.message };
+
+  await logAudit(supabase, session.user.id, `match_${rule.to}`, "mentorship_match", matchId, {
+    from: match.status ?? null,
+    reason: reason ?? null,
+  });
 
   const [{ data: mentor }, { data: child }] = await Promise.all([
     supabase.from("mentors").select("profile_id").eq("id", match.mentor_id).maybeSingle(),

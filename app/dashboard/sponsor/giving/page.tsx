@@ -1,6 +1,7 @@
 import { Gift, Receipt } from "lucide-react";
 import { getMyDonations } from "@/lib/sponsor/queries";
 import { BankDetailsCard } from "@/components/sponsor/bank-details-card";
+import { getBankDetails } from "@/lib/site-settings";
 import {
   EmptyState,
   PageHeader,
@@ -18,7 +19,7 @@ const naira = new Intl.NumberFormat("en-NG", {
 
 export default async function GivingPage() {
   // Only this sponsor's own gifts, through the sponsor_donations view.
-  const donations = await getMyDonations();
+  const [donations, bank] = await Promise.all([getMyDonations(), getBankDetails()]);
   const total = donations.reduce((sum, d) => sum + Number(d.amount), 0);
 
   return (
@@ -81,7 +82,7 @@ export default async function GivingPage() {
         )}
       </Panel>
 
-      <BankDetailsCard />
+      <BankDetailsCard details={bank} />
     </div>
   );
 }

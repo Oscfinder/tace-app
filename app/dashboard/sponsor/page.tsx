@@ -8,6 +8,7 @@ import {
 } from "@/lib/sponsor/queries";
 import { STAGE_LABELS, stageProgress } from "@/lib/beneficiary-stages";
 import { BankDetailsCard } from "@/components/sponsor/bank-details-card";
+import { getBankDetails } from "@/lib/site-settings";
 import {
   EmptyState,
   Pill,
@@ -22,11 +23,12 @@ const naira = new Intl.NumberFormat("en-NG", {
 });
 
 export default async function SponsorHomePage() {
-  const [profile, children, updates, donations] = await Promise.all([
+  const [profile, children, updates, donations, bank] = await Promise.all([
     getSponsorProfile(),
     getSponsorChildren(),
     getProgressUpdates(),
     getMyDonations(),
+    getBankDetails(),
   ]);
 
   const firstName = profile?.full_name.split(" ")[0] ?? "there";
@@ -141,7 +143,7 @@ export default async function SponsorHomePage() {
             title="Your child will be linked soon"
             message="An admin links a child to your account once your first transfer is confirmed. After that, you'll see their photo, progress and journey here. Thank you for your generosity."
           />
-          <BankDetailsCard />
+          <BankDetailsCard details={bank} />
         </>
       )}
     </div>

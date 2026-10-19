@@ -2,10 +2,24 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { getDashboardPath } from "@/lib/auth/guards";
 import { ROLES, type Role } from "@/types/roles";
+import { buildCsp, newNonce } from "@/lib/security/csp";
 
 const AUTH_PREFIXES = ["/login", "/signup"];
 
+// Every response carries a Content-Security-Policy with a fresh script nonce.
+// Next reads the policy from the REQUEST headers to put the nonce on its own
+// inline scripts, so it is set on both the request and the response.
 export async function proxy(request: NextRequest) {
+  const nonce = newNonce();
+  const csp = buildCsp(nonce);
+  request.headers.set("x-nonce", nonce);
+  request.headers.set("content-security-policy", csp);
+  const result = await route(request);
+  result.headers.set("Content-Security-Policy", csp);
+  return result;
+}
+
+async function route(request: NextRequest) {
   const { supabase, response, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
@@ -84,6 +98,14 @@ export async function proxy(request: NextRequest) {
     const correctPath = getDashboardPath(role);
     if (!pathname.startsWith(correctPath)) {
       return NextResponse.redirect(new URL(correctPath, request.url));
+    }
+    // Admins need a second factor before any admin page (requireRole checks
+    // again for Server Actions, which can be posted to any URL).
+    if (role === "admin") {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal?.currentLevel !== "aal2") {
+        return NextResponse.redirect(new URL("/admin-2fa", request.url));
+      }
     }
     return response;
   }

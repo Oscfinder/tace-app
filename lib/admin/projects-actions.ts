@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { INVALID_REQUEST, projectInput, attachInput, uuid } from "@/lib/admin/schemas";
 import { getConsentWarnings } from "@/lib/admin/projects";
 
 type ActionResult = { error: string } | { success: true };
@@ -16,6 +17,7 @@ export async function createProject(input: {
   endDate: string | null;
 }): Promise<ActionResult | never> {
   const session = await requireRole("admin");
+  if (!(projectInput.safeParse(input).success)) return INVALID_REQUEST;
   if (!input.title.trim()) return { error: "Title is required." };
   const supabase = await createClient();
 
@@ -48,6 +50,7 @@ export async function attachBeneficiary(input: {
   amountNeeded: number | null;
 }): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(attachInput.safeParse(input).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { error } = await supabase.from("project_beneficiaries").insert({
@@ -74,6 +77,7 @@ export async function detachBeneficiary(
   projectId: string,
 ): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(uuid.safeParse(projectBeneficiaryId).success && uuid.safeParse(projectId).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -91,6 +95,7 @@ export async function publishProject(input: {
   confirmedDespiteWarnings: boolean;
 }): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(uuid.safeParse(input.projectId).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   // Re-derived server-side, same as the consent check the UI already ran —
@@ -118,6 +123,7 @@ export async function unpublishProject(
   projectId: string,
 ): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(uuid.safeParse(projectId).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -134,6 +140,7 @@ export async function unpublishProject(
 
 export async function archiveProject(projectId: string): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(uuid.safeParse(projectId).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   // Belt-and-suspenders alongside the RLS fix: archived projects must never

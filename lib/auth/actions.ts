@@ -5,11 +5,20 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getDashboardPath } from "@/lib/auth/guards";
 import type { Role } from "@/types/roles";
-import type {
-  MemberSignupInput,
-  MentorSignupInput,
-  SponsorSignupInput,
+import {
+  loginSchema,
+  memberSignupSchema,
+  mentorSignupSchema,
+  sponsorSignupSchema,
+  type MemberSignupInput,
+  type MentorSignupInput,
+  type SponsorSignupInput,
 } from "@/lib/validations/auth";
+import {
+  LIMITS,
+  RATE_LIMITED_MESSAGE,
+  allowAttempt,
+} from "@/lib/security/rate-limit";
 
 type ActionResult = { error: string } | { success: true };
 
@@ -37,8 +46,13 @@ async function signUp(input: {
 }
 
 export async function signUpMember(
-  input: MemberSignupInput,
+  raw: MemberSignupInput,
 ): Promise<ActionResult> {
+  // The form checks this too, but the browser is never trusted.
+  const parsed = memberSignupSchema.safeParse(raw);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the form." };
+  if (!(await allowAttempt(LIMITS.signupIp))) return { error: RATE_LIMITED_MESSAGE };
+  const input = parsed.data;
   // occupation/committee_preference/reason_for_joining have no columns of
   // their own on `profiles` (and handle_new_user() doesn't read them even
   // if they did) — they're display-only reference info Ticket 2D's admin
@@ -58,8 +72,12 @@ export async function signUpMember(
 }
 
 export async function signUpSponsor(
-  input: SponsorSignupInput,
+  raw: SponsorSignupInput,
 ): Promise<ActionResult> {
+  const parsed = sponsorSignupSchema.safeParse(raw);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the form." };
+  if (!(await allowAttempt(LIMITS.signupIp))) return { error: RATE_LIMITED_MESSAGE };
+  const input = parsed.data;
   const { data, error } = await signUp({ ...input, role: "sponsor" });
   if (error) return { error: error.message };
   if (!data.user)
@@ -91,8 +109,12 @@ export async function signUpSponsor(
 }
 
 export async function signUpMentor(
-  input: MentorSignupInput,
+  raw: MentorSignupInput,
 ): Promise<ActionResult> {
+  const parsed = mentorSignupSchema.safeParse(raw);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the form." };
+  if (!(await allowAttempt(LIMITS.signupIp))) return { error: RATE_LIMITED_MESSAGE };
+  const input = parsed.data;
   const { data, error } = await signUp({ ...input, role: "mentor" });
   if (error) return { error: error.message };
   if (!data.user)
@@ -133,10 +155,23 @@ export async function signUpMentor(
   return { success: true };
 }
 
-export async function signIn(input: {
+export async function signIn(raw: {
   email: string;
   password: string;
 }): Promise<{ error: string } | never> {
+  const parsed = loginSchema.safeParse(raw);
+  if (!parsed.success) return { error: "Enter a valid email and password." };
+  const input = parsed.data;
+
+  // Per connection, and per account so one address can't be hammered from many
+  // connections.
+  if (
+    !(await allowAttempt(LIMITS.loginIp)) ||
+    !(await allowAttempt(LIMITS.loginEmail, input.email))
+  ) {
+    return { error: RATE_LIMITED_MESSAGE };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword(input);
 

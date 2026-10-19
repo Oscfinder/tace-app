@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth/guards";
+import { INVALID_REQUEST, applicationNotesInput, approveInput, rejectInput, flagInput } from "@/lib/admin/schemas";
+import { logAudit } from "@/lib/admin/audit";
 import { sendEmail } from "@/lib/email/send";
+import { escapeHtml } from "@/lib/email/escape";
 import { getSiteUrl } from "@/lib/site-url";
 import { movePhotoToBeneficiary } from "@/lib/storage/move-photo";
 import { createMatchCore } from "@/lib/admin/matches-core";
@@ -20,6 +23,7 @@ export async function saveAdminNotes(
   notes: string,
 ): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(applicationNotesInput.safeParse({ id: applicationId, notes }).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -38,6 +42,7 @@ export async function approveApplication(input: {
   mentorId: string | null;
 }): Promise<ActionResult> {
   const session = await requireRole("admin");
+  if (!(approveInput.safeParse(input).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { data: application, error: fetchError } = await supabase
@@ -214,8 +219,8 @@ export async function approveApplication(input: {
     await sendEmail({
       to: loginEmail,
       subject: "TACE Foundation — Your application has been approved",
-      html: `<p>Hi ${application.guardian_name ?? application.child_first_name},</p>
-<p>${application.child_first_name}'s application to TACE Welfare Foundation has been approved. Their TACE ID is <strong>${beneficiary.tace_id}</strong>.</p>
+      html: `<p>Hi ${escapeHtml(application.guardian_name ?? application.child_first_name)},</p>
+<p>${escapeHtml(application.child_first_name)}'s application to TACE Welfare Foundation has been approved. Their TACE ID is <strong>${beneficiary.tace_id}</strong>.</p>
 <p>An account has been created using this email address.${
         actionLink
           ? ` <a href="${actionLink}">Click here to set your password and sign in</a>.`
@@ -225,6 +230,12 @@ export async function approveApplication(input: {
   } catch (err) {
     console.error("Approval email failed to send:", err);
   }
+
+  await logAudit(supabase, session.user.id, "application_approved", "application", input.applicationId, {
+    beneficiary_id: beneficiary.id,
+    stage: input.currentStage,
+    mentor_requested: Boolean(input.mentorId),
+  });
 
   revalidatePath("/dashboard/admin/applications");
   revalidatePath(`/dashboard/admin/applications/${input.applicationId}`);
@@ -236,6 +247,7 @@ export async function rejectApplication(input: {
   reason: string;
 }): Promise<ActionResult> {
   const session = await requireRole("admin");
+  if (!(rejectInput.safeParse(input).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { data: application } = await supabase
@@ -267,14 +279,16 @@ export async function rejectApplication(input: {
       await sendEmail({
         to: notifyEmail,
         subject: "TACE Foundation — Update on your application",
-        html: `<p>Thank you for applying to TACE Welfare Foundation on behalf of ${application.child_first_name}.</p>
-<p>After review, we're not able to proceed with this application at this time. ${input.reason}</p>
+        html: `<p>Thank you for applying to TACE Welfare Foundation on behalf of ${escapeHtml(application.child_first_name)}.</p>
+<p>After review, we're not able to proceed with this application at this time. ${escapeHtml(input.reason)}</p>
 <p>You're welcome to apply again in the future.</p>`,
       });
     } catch (err) {
       console.error("Rejection email failed to send:", err);
     }
   }
+
+  await logAudit(supabase, session.user.id, "application_rejected", "application", input.applicationId);
 
   revalidatePath("/dashboard/admin/applications");
   revalidatePath(`/dashboard/admin/applications/${input.applicationId}`);
@@ -285,7 +299,8 @@ export async function flagApplication(input: {
   applicationId: string;
   note: string;
 }): Promise<ActionResult> {
-  await requireRole("admin");
+  const session = await requireRole("admin");
+  if (!(flagInput.safeParse(input).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { data: application } = await supabase
@@ -311,6 +326,8 @@ export async function flagApplication(input: {
     .eq("id", input.applicationId);
 
   if (error) return { error: error.message };
+
+  await logAudit(supabase, session.user.id, "application_flagged", "application", input.applicationId);
 
   revalidatePath("/dashboard/admin/applications");
   revalidatePath(`/dashboard/admin/applications/${input.applicationId}`);

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { logAudit } from "@/lib/admin/audit";
 import { sendEmail } from "@/lib/email/send";
 import { getSiteUrl } from "@/lib/site-url";
 import { VETTING_ITEMS, checklistComplete } from "@/lib/mentoring/constants";
@@ -101,6 +102,8 @@ export async function clearMentor(input: {
     .eq("id", parsed.data.mentorId);
   if (error) return { error: error.message };
 
+  await logAudit(supabase, session.user.id, "mentor_cleared", "mentor", parsed.data.mentorId);
+
   try {
     await sendEmail({
       to: found.profile.email,
@@ -178,6 +181,10 @@ export async function rejectMentor(input: {
     if (rows.length > 0) await supabase.from("notifications").insert(rows);
   }
 
+  await logAudit(supabase, session.user.id, "mentor_rejected", "mentor", parsed.data.mentorId, {
+    matches_ended: ended?.length ?? 0,
+  });
+
   try {
     await sendEmail({
       to: found.profile.email,
@@ -198,7 +205,7 @@ export async function rejectMentor(input: {
 export async function activateMentorAccount(input: {
   mentorId: string;
 }): Promise<ActionResult> {
-  await requireRole("admin");
+  const session = await requireRole("admin");
   if (!z.string().uuid().safeParse(input.mentorId).success) return { error: "Invalid request." };
   const supabase = await createClient();
   const found = await loadMentor(supabase, input.mentorId);
@@ -213,6 +220,8 @@ export async function activateMentorAccount(input: {
     .update({ status: "active" })
     .eq("id", found.profile.id);
   if (error) return { error: error.message };
+
+  await logAudit(supabase, session.user.id, "mentor_activated", "mentor", input.mentorId);
 
   try {
     await sendEmail({

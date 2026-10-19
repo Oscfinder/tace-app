@@ -468,6 +468,20 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["audit_log"]["Row"]>;
         Relationships: [];
       };
+      site_settings: {
+        Row: {
+          key: string;
+          value: string;
+          is_public: boolean;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["site_settings"]["Row"]> & {
+          key: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;
+        Relationships: [];
+      };
       committee_updates: {
         Row: {
           id: string;
@@ -682,6 +696,18 @@ export type Database = {
         Row: { first_name: string };
         Relationships: [];
       };
+      my_support: {
+        Row: {
+          id: string;
+          beneficiary_id: string;
+          type: string;
+          amount: number | null;
+          description: string | null;
+          given_at: string | null;
+          created_at: string | null;
+        };
+        Relationships: [];
+      };
       active_children_count: {
         Row: { total: number };
         Relationships: [];
@@ -711,6 +737,10 @@ export type Database = {
       get_mentor_id: { Args: Record<string, never>; Returns: string };
       get_sponsor_id: { Args: Record<string, never>; Returns: string };
       mark_thread_read: { Args: { p_match_id: string }; Returns: undefined };
+      rate_limit_hit: {
+        Args: { p_bucket: string; p_key_hash: string; p_max: number; p_window_seconds: number };
+        Returns: boolean;
+      };
     };
     Enums: Record<string, never>;
   };

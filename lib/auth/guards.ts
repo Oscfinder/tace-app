@@ -43,7 +43,19 @@ export async function requireRole(role: Role) {
   const session = await requireActive();
   if (session.profile.role !== role)
     redirect(getDashboardPath(session.profile.role));
+  // Admins must also have passed two-factor sign-in. proxy.ts checks this for
+  // admin pages, but a Server Action can be POSTed to any URL, so every admin
+  // page and action checks it again here.
+  if (role === "admin" && !(await hasSecondFactor())) redirect("/admin-2fa");
   return session;
+}
+
+// True once this session has been upgraded with a verified authenticator code
+// (Supabase "aal2"). Read from the signed session token, no network call.
+export async function hasSecondFactor() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  return data?.currentLevel === "aal2";
 }
 
 export function getDashboardPath(role: Role) {

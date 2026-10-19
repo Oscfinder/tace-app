@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/auth/guards";
 import type { Database } from "@/types/database";
 
 export type MemberRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -35,6 +36,8 @@ export type SignupReference = {
 // a profiles column (see the comment on signUpMember). Needs the
 // service-role client; nothing here is ever written back to auth, only read.
 export async function getSignupReference(id: string): Promise<SignupReference> {
+  // Uses the service role, so check the caller here rather than trusting the page.
+  await requireRole("admin");
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.getUserById(id);
   if (error || !data.user) {

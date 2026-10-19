@@ -191,3 +191,16 @@
 .member-theme h3 {
   font-family: var(--font-manrope), var(--font-heading), sans-serif;
 }
+
+/* Printing an admin report: hide the sidebar and top bar, use the full page. */
+@media print {
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  [data-print-hide] {
+    display: none !important;
+  }
+  [data-slot="sidebar-inset"] {
+    background: #fff !important;
+  }
+}

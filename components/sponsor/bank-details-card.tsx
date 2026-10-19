@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { Check, Copy, Landmark } from "lucide-react";
+import type { BankDetails } from "@/lib/site-settings";
 
-// Bank-transfer giving only (no card or Paystack flow yet). Details come from
-// public env vars so they can change without a code change.
-export function BankDetailsCard() {
-  const number = process.env.NEXT_PUBLIC_BANK_ACCOUNT_NUMBER;
-  const bank = process.env.NEXT_PUBLIC_BANK_NAME;
-  const accountName =
-    process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME || "TACE Welfare Foundation";
+// Bank-transfer giving only (no card or Paystack flow yet). The details are
+// read from Admin > Settings by the page and passed in.
+export function BankDetailsCard({ details }: { details: BankDetails }) {
+  const number = details.accountNumber;
+  const bank = details.bank;
+  const accountName = details.accountName;
   const [copied, setCopied] = useState(false);
 
   async function copy() {

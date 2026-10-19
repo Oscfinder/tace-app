@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { logAudit } from "@/lib/admin/audit";
 
 type ActionResult = { error: string } | { success: true };
 
@@ -36,6 +37,10 @@ export async function setConcernStatus(input: {
     )
     .eq("id", parsed.data.id);
   if (error) return { error: error.message };
+
+  await logAudit(supabase, session.user.id, "concern_status_changed", "safeguarding_concern", parsed.data.id, {
+    status: parsed.data.status,
+  });
 
   revalidatePath("/dashboard/admin/concerns");
   revalidatePath("/dashboard/admin");

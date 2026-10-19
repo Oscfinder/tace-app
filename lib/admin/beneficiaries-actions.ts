@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { INVALID_REQUEST, stageInput, assignMentorInput, interventionInput, uuid, safeFileName } from "@/lib/admin/schemas";
+import { logAudit } from "@/lib/admin/audit";
 import { STAGE_LABELS } from "@/lib/beneficiary-stages";
 import { createMatchCore } from "@/lib/admin/matches-core";
 import type { Database } from "@/types/database";
@@ -20,6 +22,7 @@ export async function updateBeneficiaryStage(input: {
   note: string;
 }): Promise<ActionResult> {
   const session = await requireRole("admin");
+  if (!(stageInput.safeParse(input).success)) return INVALID_REQUEST;
   if (!input.note.trim()) {
     return { error: "A short note is required when moving a stage." };
   }
@@ -43,6 +46,10 @@ export async function updateBeneficiaryStage(input: {
     })
     .eq("id", input.beneficiaryId);
   if (updateError) return { error: updateError.message };
+
+  await logAudit(supabase, session.user.id, "stage_changed", "beneficiary", input.beneficiaryId, {
+    new_stage: input.newStage,
+  });
 
   // Celebrate with the child (or their guardian, who shares the login).
   // Best-effort: the stage change has already succeeded, so a failed
@@ -96,6 +103,7 @@ export async function assignMentor(input: {
   mentorId: string;
 }): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(assignMentorInput.safeParse(input).success)) return INVALID_REQUEST;
   const supabase = await createClient();
   // Same rules as the Mentors module: cleared + active mentor, under the
   // mentee cap, no duplicate match, both sides notified.
@@ -115,6 +123,7 @@ export async function logIntervention(input: {
   date: string;
 }): Promise<ActionResult> {
   const session = await requireRole("admin");
+  if (!(interventionInput.safeParse(input).success)) return INVALID_REQUEST;
   if (!input.type.trim()) return { error: "Type is required." };
   const supabase = await createClient();
 
@@ -141,7 +150,7 @@ export async function uploadBeneficiaryDocument(
   const bucket = formData.get("bucket");
   const file = formData.get("file");
 
-  if (typeof beneficiaryId !== "string" || !beneficiaryId) {
+  if (typeof beneficiaryId !== "string" || !uuid.safeParse(beneficiaryId).success) {
     return { error: "Missing beneficiary." };
   }
   if (bucket !== "documents" && bucket !== "certificates") {
@@ -158,7 +167,7 @@ export async function uploadBeneficiaryDocument(
   }
 
   const supabase = await createClient();
-  const path = `${beneficiaryId}/${file.name}`;
+  const path = `${beneficiaryId}/${safeFileName(file.name)}`;
 
   const { error } = await supabase.storage
     .from(bucket)

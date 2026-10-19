@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { INVALID_REQUEST, activateSponsorInput, donationInput, uuid } from "@/lib/admin/schemas";
+import { logAudit } from "@/lib/admin/audit";
 import { sendEmail } from "@/lib/email/send";
+import { escapeHtml } from "@/lib/email/escape";
 
 type ActionResult = { error: string } | { success: true };
 
@@ -12,7 +15,8 @@ export async function activateSponsor(input: {
   profileId: string;
   beneficiaryId: string;
 }): Promise<ActionResult> {
-  await requireRole("admin");
+  const session = await requireRole("admin");
+  if (!(activateSponsorInput.safeParse(input).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { data: profile } = await supabase
@@ -50,12 +54,16 @@ export async function activateSponsor(input: {
     await sendEmail({
       to: profile.email,
       subject: "TACE Foundation — You're approved",
-      html: `<p>Hi ${profile.full_name},</p>
+      html: `<p>Hi ${escapeHtml(profile.full_name)},</p>
 <p>Your TACE Foundation sponsorship has been approved and you've been linked to a child. You can now sign in to follow their progress.</p>`,
     });
   } catch (err) {
     console.error("Sponsor approval email failed to send:", err);
   }
+
+  await logAudit(supabase, session.user.id, "sponsor_activated", "sponsor", input.sponsorId, {
+    beneficiary_id: input.beneficiaryId,
+  });
 
   revalidatePath("/dashboard/admin/sponsors");
   revalidatePath(`/dashboard/admin/sponsors/${input.sponsorId}`);
@@ -77,6 +85,7 @@ export async function logDonation(input: {
   confirmedMismatch?: boolean;
 }): Promise<ActionResult> {
   const session = await requireRole("admin");
+  if (!(donationInput.safeParse(input).success)) return INVALID_REQUEST;
   if (!input.donorName.trim()) return { error: "Donor name is required." };
   if (!input.amount || input.amount <= 0) {
     return { error: "Enter a valid amount." };
@@ -127,6 +136,12 @@ export async function logDonation(input: {
   });
   if (insertError) return { error: insertError.message };
 
+  await logAudit(supabase, session.user.id, "donation_logged", "donation", null, {
+    amount: input.amount,
+    sponsor_id: input.sponsorId,
+    project_id: input.projectId,
+  });
+
   if (input.sponsorId) {
     // Recomputed from the donations table rather than incremented via a
     // read-then-write on sponsors.total_donated, which raced under
@@ -156,7 +171,8 @@ export async function logDonation(input: {
 export async function sendDonationReceipt(
   donationId: string,
 ): Promise<ActionResult> {
-  await requireRole("admin");
+  const session = await requireRole("admin");
+  if (!(uuid.safeParse(donationId).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { data: donation } = await supabase
@@ -180,15 +196,18 @@ export async function sendDonationReceipt(
     await sendEmail({
       to: donation.donor_email,
       subject: "TACE Foundation — Donation Receipt",
-      html: `<p>Hi ${donation.donor_name},</p>
+      html: `<p>Hi ${escapeHtml(donation.donor_name)},</p>
 <p>Thank you for your donation of <strong>₦${Number(donation.amount).toLocaleString()}</strong>${
-        donation.purpose ? ` for ${donation.purpose}` : ""
+        donation.purpose ? ` for ${escapeHtml(donation.purpose)}` : ""
       }. This email serves as your receipt.</p>`,
     });
   } catch (err) {
     console.error("Receipt email failed to send:", err);
   }
 
+  await logAudit(supabase, session.user.id, "receipt_sent", "donation", donationId);
+
   revalidatePath("/dashboard/admin/sponsors");
+  revalidatePath("/dashboard/admin/finance");
   return { success: true };
 }

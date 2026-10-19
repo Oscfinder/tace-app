@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Quicksand } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toast";
@@ -15,9 +16,13 @@ export const metadata: Metadata = {
   description: "Guiding Children Toward Independence",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Reading the request headers makes every page render per request, which the
+  // Content-Security-Policy needs: its script nonce is different on each load,
+  // so a page built ahead of time (with no nonce) would have its scripts blocked.
+  await headers();
   return (
     <html lang="en" className={`${quicksand.variable} h-full antialiased`}>
       <head>

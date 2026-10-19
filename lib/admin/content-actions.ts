@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { INVALID_REQUEST, storyFields, announcementInput, idToggleInput, uuid, safeFileName } from "@/lib/admin/schemas";
 import { getStoryConsentWarning } from "@/lib/admin/content";
 
 type ActionResult = { error: string } | { success: true };
@@ -43,6 +44,9 @@ export async function createStory(
   const session = await requireRole("admin");
   const { title, content, excerpt, beneficiaryId, file } =
     readStoryFields(formData);
+  if (!storyFields.safeParse({ title, content, excerpt, beneficiaryId }).success) {
+    return { error: "That is too long or not valid. Please shorten it and try again." };
+  }
   if (!title) return { error: "Title is required." };
   if (!content) return { error: "Content is required." };
   const fileError = validateFile(file);
@@ -67,7 +71,7 @@ export async function createStory(
 
   if (file) {
     // public-assets only — never the private beneficiary-photos bucket.
-    const path = `stories/${story.id}/${file.name}`;
+    const path = `stories/${story.id}/${safeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage
       .from("public-assets")
       .upload(path, file, { upsert: true, contentType: file.type });
@@ -88,8 +92,12 @@ export async function updateStory(
   formData: FormData,
 ): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(uuid.safeParse(id).success)) return INVALID_REQUEST;
   const { title, content, excerpt, beneficiaryId, file } =
     readStoryFields(formData);
+  if (!storyFields.safeParse({ title, content, excerpt, beneficiaryId }).success) {
+    return { error: "That is too long or not valid. Please shorten it and try again." };
+  }
   if (!title) return { error: "Title is required." };
   if (!content) return { error: "Content is required." };
   const fileError = validateFile(file);
@@ -109,7 +117,7 @@ export async function updateStory(
   if (updateError) return { error: updateError.message };
 
   if (file) {
-    const path = `stories/${id}/${file.name}`;
+    const path = `stories/${id}/${safeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage
       .from("public-assets")
       .upload(path, file, { upsert: true, contentType: file.type });
@@ -125,6 +133,7 @@ export async function updateStory(
 
 export async function deleteStory(id: string): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(uuid.safeParse(id).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   // Best-effort storage cleanup — a failure here shouldn't block deleting
@@ -155,6 +164,7 @@ export async function toggleStoryPublish(input: {
   confirmedDespiteWarning?: boolean;
 }): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(idToggleInput.safeParse({ id: input.id, publish: input.publish }).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   if (input.publish) {
@@ -192,6 +202,7 @@ export async function createAnnouncement(input: {
   content: string;
 }): Promise<ActionResult> {
   const session = await requireRole("admin");
+  if (!(announcementInput.safeParse(input).success)) return INVALID_REQUEST;
   if (!input.title.trim() || !input.content.trim()) {
     return { error: "Title and content are both required." };
   }
@@ -214,6 +225,7 @@ export async function updateAnnouncement(input: {
   content: string;
 }): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(uuid.safeParse(input.id).success && announcementInput.safeParse(input).success)) return INVALID_REQUEST;
   if (!input.title.trim() || !input.content.trim()) {
     return { error: "Title and content are both required." };
   }
@@ -231,6 +243,7 @@ export async function updateAnnouncement(input: {
 
 export async function deleteAnnouncement(id: string): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(uuid.safeParse(id).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { error } = await supabase.from("announcements").delete().eq("id", id);
@@ -245,6 +258,7 @@ export async function toggleAnnouncementPublish(input: {
   publish: boolean;
 }): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(idToggleInput.safeParse({ id: input.id, publish: input.publish }).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { error } = await supabase

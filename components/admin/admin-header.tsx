@@ -13,7 +13,7 @@ export function AdminHeader({
   roleLabel: string;
 }) {
   return (
-    <div className="flex h-[72px] items-center justify-between gap-4 px-4 sm:px-6">
+    <div data-print-hide className="flex h-[72px] items-center justify-between gap-4 px-4 sm:px-6">
       <div className="flex items-center gap-3">
         <SidebarTrigger className="size-11 rounded-[10px] border border-[#e5edf6] bg-white text-[#102a4d] lg:hidden" />
         <AdminBreadcrumb />

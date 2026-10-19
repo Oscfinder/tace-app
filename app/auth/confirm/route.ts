@@ -2,7 +2,10 @@ import { type EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardPath } from "@/lib/auth/guards";
+import { safeNextPath } from "@/lib/security/safe-redirect";
 import type { Role } from "@/types/roles";
+
+const OTP_TYPES = ["signup", "recovery", "invite", "magiclink", "email", "email_change"] as const;
 
 // Hit by the links in Supabase's "Confirm signup" and "Reset password"
 // email templates: {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=...
@@ -13,13 +16,13 @@ import type { Role } from "@/types/roles";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
-  const type = searchParams.get("type") as EmailOtpType | null;
-  // Same-site relative paths only — anything else would be an open redirect.
-  const rawNext = searchParams.get("next");
-  const next =
-    rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//")
-      ? rawNext
-      : null;
+  const rawType = searchParams.get("type");
+  const type = (OTP_TYPES as readonly string[]).includes(rawType ?? "")
+    ? (rawType as EmailOtpType)
+    : null;
+  // Same-site paths only. See safeNextPath for why a simple "starts with /"
+  // check is not enough.
+  const next = safeNextPath(searchParams.get("next"));
 
   if (!token_hash || !type) {
     return NextResponse.redirect(new URL("/login?error=invalid_link", origin));

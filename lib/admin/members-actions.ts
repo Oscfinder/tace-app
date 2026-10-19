@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { INVALID_REQUEST, memberAssignmentInput, announcementInput, uuid } from "@/lib/admin/schemas";
+import { logAudit } from "@/lib/admin/audit";
 import { sendEmail } from "@/lib/email/send";
+import { escapeHtml } from "@/lib/email/escape";
 import { trusteeRoleSchema } from "@/lib/validations/auth";
 import type { Database } from "@/types/database";
 
@@ -36,7 +39,8 @@ function validateTrusteeRole(input: Assignment): string | null {
 }
 
 export async function activateMember(input: Assignment): Promise<ActionResult> {
-  await requireRole("admin");
+  const session = await requireRole("admin");
+  if (!(memberAssignmentInput.safeParse(input).success)) return INVALID_REQUEST;
   if (!input.memberType) return { error: "Choose Member or Trustee." };
   const trusteeRoleError = validateTrusteeRole(input);
   if (trusteeRoleError) return { error: trusteeRoleError };
@@ -60,12 +64,16 @@ export async function activateMember(input: Assignment): Promise<ActionResult> {
     await sendEmail({
       to: profile.email,
       subject: "TACE Foundation — You're approved",
-      html: `<p>Hi ${profile.full_name},</p>
+      html: `<p>Hi ${escapeHtml(profile.full_name)},</p>
 <p>Your TACE Foundation membership has been approved. You can now sign in and access your member dashboard.</p>`,
     });
   } catch (err) {
     console.error("Member approval email failed to send:", err);
   }
+
+  await logAudit(supabase, session.user.id, "member_activated", "profile", input.profileId, {
+    member_type: input.memberType ?? null,
+  });
 
   revalidatePath("/dashboard/admin/members");
   revalidatePath(`/dashboard/admin/members/${input.profileId}`);
@@ -75,7 +83,8 @@ export async function activateMember(input: Assignment): Promise<ActionResult> {
 export async function deactivateMember(
   profileId: string,
 ): Promise<ActionResult> {
-  await requireRole("admin");
+  const session = await requireRole("admin");
+  if (!(uuid.safeParse(profileId).success)) return INVALID_REQUEST;
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -84,6 +93,8 @@ export async function deactivateMember(
     .eq("id", profileId)
     .eq("role", "member");
   if (error) return { error: error.message };
+
+  await logAudit(supabase, session.user.id, "member_deactivated", "profile", profileId);
 
   revalidatePath("/dashboard/admin/members");
   revalidatePath(`/dashboard/admin/members/${profileId}`);
@@ -94,6 +105,7 @@ export async function updateMemberAssignment(
   input: Assignment,
 ): Promise<ActionResult> {
   await requireRole("admin");
+  if (!(memberAssignmentInput.safeParse(input).success)) return INVALID_REQUEST;
   if (!input.memberType) return { error: "Choose Member or Trustee." };
   const trusteeRoleError = validateTrusteeRole(input);
   if (trusteeRoleError) return { error: trusteeRoleError };
@@ -115,6 +127,7 @@ export async function createAnnouncement(input: {
   content: string;
 }): Promise<ActionResult> {
   const session = await requireRole("admin");
+  if (!(announcementInput.safeParse(input).success)) return INVALID_REQUEST;
   if (!input.title.trim() || !input.content.trim()) {
     return { error: "Title and content are both required." };
   }
