@@ -464,7 +464,20 @@ console.log("\n== 4. Grants ==");
   ok("no anon/authenticated INSERT/UPDATE/DELETE on any view", v.length === 0, v.slice(0, 3).map((x) => x.table_name).join(","));
   const f = await q(`select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef and p.prorettype <> 'trigger'::regtype and has_function_privilege('anon', p.oid, 'execute') and p.proname not in ('get_role','get_mentor_id','get_sponsor_id','mark_thread_read')`);
   ok("no unexpected SECURITY DEFINER function is callable by anon", f.length === 0, f.map((x) => x.proname).join(","));
-  const rl = await probe("authenticated" in ACTOR ? "member" : "member", `select public.rate_limit_hit('t','k',1,60)`);
+  // Admin two-factor is switched by ADMIN_MFA_REQUIRED in the web app only. If a policy,
+  // view or function ever looked at the session's assurance level (aal / jwt claims),
+  // turning the switch off would NOT let an admin in at the database, so refuse that.
+  const mfa = await q(`
+    select 'policy ' || tablename || '.' || policyname as what from pg_policies
+      where schemaname in ('public','storage') and (coalesce(qual,'') || coalesce(with_check,'')) ~* '(aal[12]|auth[.]jwt)'
+    union all
+    select 'view ' || viewname from pg_views
+      where schemaname = 'public' and definition ~* '(aal[12]|auth[.]jwt)'
+    union all
+    select 'function ' || p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* '(aal[12]|auth[.]jwt)'`);
+  ok("no policy, view or function depends on the two-factor session level (aal2), so ADMIN_MFA_REQUIRED=false really lets admin in everywhere", mfa.length === 0, mfa.map((x) => x.what).join(", "));
+  const rl = await probe("member", `select public.rate_limit_hit('t','k',1,60)`);
   ok("rate_limit_hit cannot be called by a signed-in user", !!rl.err);
 }
 

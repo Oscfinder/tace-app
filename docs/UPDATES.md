@@ -1,5 +1,19 @@
 # TACE Platform — Updates Log
 
+## Oct 23, 2026 — Admin two-factor is now a switch, currently OFF (accepted risk until launch)
+
+**Read this before touching admin sign-in. It changes what the 5B entry below says about two-factor.**
+
+- New environment variable **`ADMIN_MFA_REQUIRED`** (documented in `.env.example`). **Only the exact value `true` turns two-factor on.** Unset, empty, `false`, `TRUE`, `1`, `yes`, or `true ` with a space all mean OFF. It is read at request time in `lib/security/mfa.ts` (`isAdminMfaRequired`), so changing it needs a redeploy but no rebuild of code.
+- **OFF (the current setting, nothing set in Vercel):** an admin signs in with email and password alone. No redirect to `/admin-2fa`; admin pages, the CSV and JSON download routes and every admin Server Action work without a two-factor session.
+- **ON:** exactly as before. `proxy.ts` sends a password-only admin to `/admin-2fa` for any `/dashboard/admin` page; `requireRole("admin")` (every admin page and Server Action) and the two download routes (`adminSecondFactorSatisfied` in `lib/auth/guards.ts`) refuse a session that has not passed the authenticator check.
+- **Nothing was removed.** The setup and verify screen (`/admin-2fa`, `components/forms/two-factor-form.tsx`), the Reset 2FA button and the enforcement code all remain. **Admin, Settings** now has a "Two-factor sign-in" box with a link to the screen, so any admin can enrol voluntarily whether the switch is on or off (the screen says whether it is optional or required).
+- **Database:** nothing in any policy, view or function depends on the two-factor session level (aal2) — checked by search and now asserted by `npm run test:rls` (it fails if one is ever added; the check itself was tested with a deliberately aal2-dependent policy). So turning it off needs no database change, and the RLS audit passes (1,018 checks) with `ADMIN_MFA_REQUIRED` unset, `true` and `false`.
+- **Tested:** 33 checks of the real guard code under every spelling of the variable; the built site with the switch off and on (admin pages, Settings, both download routes); tsc, lint, build, `npm run test:rls`.
+- **Accepted risk until launch:** with the switch off, a stolen admin password gives full admin access. Recorded in `docs/SECURITY_AUDIT_5B.md` (sections 1, 6 and 9) and in `docs/DATA_PROTECTION.md`.
+- **Required before launch (new `docs/LAUNCH_CHECKLIST.md`, unticked, owner Simon):** turn on `ADMIN_MFA_REQUIRED=true` and confirm both admins have enrolled. Ticket 5E must carry this item into its launch checklist and must not tick it until it has been checked on the live site.
+- This also removes the lock-out danger described in the 5B entry's "Things Simon must do" step 3 for now: with the switch off nobody is sent to the setup screen. The real enrol and verify steps are still unverified against a real Supabase project, so test them (voluntarily, from Settings) before switching it on.
+
 ## Oct 23, 2026 — Ticket 5B: Security & privacy audit (DONE; next is 5C)
 
 **For the next agent: 5A and 5B are finished. Start at Ticket 5C in `docs/PHASE_5.md`. The full audit report is `docs/SECURITY_AUDIT_5B.md`; the data protection draft is `docs/DATA_PROTECTION.md`.**
@@ -18,7 +32,7 @@ All are idempotent. Tests: `npm test` runs `npm run test:db` (179 checks: consen
 4. **Open redirect fixed** (`/auth/confirm?next=/\evil.com`), **HTML escaping in emails**, **safe upload file names**.
 5. **Rate limits** on sign-in, sign-up and password reset (migration 014, `lib/security/rate-limit.ts`). Needs `IP_HASH_SALT` in production.
 6. **Headers and CSP** with a nonce per request (`next.config.ts`, `proxy.ts`, `lib/security/csp.ts`). `app/layout.tsx` awaits `headers()` so all pages render per request; this is required for the nonce. Checked in a real browser: zero CSP violations. If a feature loads a new outside origin (analytics, maps, Paystack), add it in `lib/security/csp.ts`.
-7. **Admin two-factor** (authenticator app) at `/admin-2fa`, enforced in `proxy.ts` and in `requireRole("admin")`. Another admin can reset it from Settings.
+7. **Admin two-factor** (authenticator app) at `/admin-2fa`, enforced in `proxy.ts` and in `requireRole("admin")` when `ADMIN_MFA_REQUIRED=true` (**currently OFF, see the entry above**). Another admin can reset it from Settings.
 8. **Secrets audit:** repo and git history clean. Rotation list is in the audit report.
 9. **Data protection:** `docs/DATA_PROTECTION.md` (draft for the legal trustee, items marked [DECIDE]); admin tool on a child's page to **download all their data** or **delete all their data** (types the TACE ID; refuses while safeguarding concerns exist unless a separate box is ticked; both audit-logged).
 10. **AI provider:** the career quiz now removes the child's names, school, phone numbers, emails, links and social media names from their typed text before it goes to Google (`lib/career/redact.ts`), and asks children not to write them.
@@ -26,7 +40,7 @@ All are idempotent. Tests: `npm test` runs `npm run test:db` (179 checks: consen
 ### Things Simon must do (nothing in 5B is live until these are done)
 1. Run migrations **014, 015, 016** in the Supabase SQL editor (013 from the 5A entry first if not yet run).
 2. Set **`IP_HASH_SALT`** and **`CRON_SECRET`** in Vercel (long random strings).
-3. Confirm MFA (TOTP) is enabled in the Supabase project, then sign in as admin and finish `/admin-2fa` straight away, then invite a second admin. **If the real enrol step fails, the only admin is locked out of admin pages**: the fix is to clear the factor in the Supabase dashboard (Authentication, Users) or redeploy without the check. The fake-Supabase tests could only prove the gate, not the real enrol and verify.
+3. (Two-factor is OFF for now, see the entry above.) Before launch: confirm MFA (TOTP) is enabled in the Supabase project, enrol each admin from Admin, Settings, then set `ADMIN_MFA_REQUIRED=true`. **If the real enrol step fails, the only admin is locked out of admin pages**: the fix is to clear the factor in the Supabase dashboard (Authentication, Users) or redeploy without the check. The fake-Supabase tests could only prove the gate, not the real enrol and verify.
 4. **Rotate** the exposed GitHub token and any API key ever pasted into chat.
 5. Use a **paid Gemini API plan** (terms: data not used for training) before real children take the quiz.
 6. Give `docs/DATA_PROTECTION.md` to the legal trustee; ask whether the foundation must register with the Nigeria Data Protection Commission (NDPA 2023).

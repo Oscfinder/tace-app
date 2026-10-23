@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { getSession } from "@/lib/auth/guards";
+import { isAdminMfaRequired } from "@/lib/security/mfa";
 import { getFoundationSettings } from "@/lib/site-settings";
 import {
   FoundationForm,
@@ -23,6 +25,7 @@ export default async function SettingsPage() {
       .order("created_at"),
   ]);
   const adminList = admins ?? [];
+  const mfaRequired = isAdminMfaRequired();
 
   return (
     <div className="flex flex-col gap-6 pt-5">
@@ -68,6 +71,20 @@ export default async function SettingsPage() {
             tied to a single person.
           </p>
         ) : null}
+        <div className="mt-5 rounded-lg border border-[#e5edf6] bg-[#f7faff] p-4">
+          <h3 className="text-sm font-bold text-tace-navy">Two-factor sign-in</h3>
+          <p className="mt-1 text-sm text-tace-gray">
+            {mfaRequired
+              ? "Required for every administrator. Set up or confirm your authenticator app here."
+              : "Not required right now: administrators sign in with email and password. You can still turn it on for your own account at any time."}
+          </p>
+          <Link
+            href="/admin-2fa"
+            className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-[#d5e1ee] bg-white px-4 text-sm font-semibold text-tace-navy hover:bg-[#f3f8fd]"
+          >
+            Set up or check my two-factor sign-in
+          </Link>
+        </div>
         <h3 className="mt-5 mb-3 text-sm font-bold text-tace-navy">Invite an administrator</h3>
         <InviteAdminForm />
       </section>

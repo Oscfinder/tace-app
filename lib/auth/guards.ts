@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isAdminMfaRequired } from "@/lib/security/mfa";
 import type { Role } from "@/types/roles";
 
 export type SessionProfile = {
@@ -43,11 +44,17 @@ export async function requireRole(role: Role) {
   const session = await requireActive();
   if (session.profile.role !== role)
     redirect(getDashboardPath(session.profile.role));
-  // Admins must also have passed two-factor sign-in. proxy.ts checks this for
-  // admin pages, but a Server Action can be POSTed to any URL, so every admin
-  // page and action checks it again here.
-  if (role === "admin" && !(await hasSecondFactor())) redirect("/admin-2fa");
+  // When ADMIN_MFA_REQUIRED=true, admins must also have passed two-factor
+  // sign-in. proxy.ts checks this for admin pages, but a Server Action can be
+  // POSTed to any URL, so every admin page and action checks it again here.
+  if (role === "admin" && !(await adminSecondFactorSatisfied())) redirect("/admin-2fa");
   return session;
+}
+
+// True when the admin switch is off, or this session has passed the check.
+// Route handlers (downloads) use this instead of repeating the logic.
+export async function adminSecondFactorSatisfied() {
+  return !isAdminMfaRequired() || (await hasSecondFactor());
 }
 
 // True once this session has been upgraded with a verified authenticator code

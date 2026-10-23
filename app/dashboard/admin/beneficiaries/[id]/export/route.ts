@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { hasSecondFactor } from "@/lib/auth/guards";
+import { adminSecondFactorSatisfied } from "@/lib/auth/guards";
 import { logAudit } from "@/lib/admin/audit";
 import { buildChildExport } from "@/lib/admin/data-requests";
 
@@ -26,7 +26,7 @@ export async function GET(
   if (profile?.role !== "admin" || profile.status !== "active") {
     return new NextResponse("Forbidden", { status: 403 });
   }
-  if (!(await hasSecondFactor())) {
+  if (!(await adminSecondFactorSatisfied())) {
     return new NextResponse("Two-factor sign-in required", { status: 403 });
   }
 

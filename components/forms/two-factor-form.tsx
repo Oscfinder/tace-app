@@ -16,7 +16,7 @@ type Mode =
 // Authenticator-app (TOTP) two-factor for admins, using Supabase Auth's own MFA.
 // The shared secret is created and kept by Supabase; this page only shows it
 // once during setup and never stores it.
-export function TwoFactorForm() {
+export function TwoFactorForm({ required }: { required: boolean }) {
   const router = useRouter();
   const supabase = createClient();
   const [mode, setMode] = useState<Mode>({ kind: "loading" });
@@ -91,7 +91,7 @@ export function TwoFactorForm() {
       title={title}
       description={
         mode.kind === "enroll"
-          ? "Administrators must use an authenticator app. Scan the code below, then enter the 6-digit code it shows."
+          ? `${required ? "Administrators must use an authenticator app." : "Two-factor sign-in is optional for now, but we recommend it."} Scan the code below, then enter the 6-digit code it shows.`
           : "Enter the 6-digit code from your authenticator app."
       }
     >

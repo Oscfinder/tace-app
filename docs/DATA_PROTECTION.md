@@ -67,7 +67,7 @@ Access is enforced inside the database (row-level security), not only in the web
 | Who | Can see |
 |---|---|
 | **Visitors (not signed in)** | Only: published stories and projects; for children whose guardian ticked photography consent, first name, age, stage and photo; the foundation's public details |
-| **Admins** (sign in with a second factor) | Everything, including the audit log. Staff notes on a child are visible to admins only |
+| **Admins** (with a second factor once `ADMIN_MFA_REQUIRED` is on) | Everything, including the audit log. Staff notes on a child are visible to admins only |
 | **The child / guardian account** | Their own record and everything about them, except internal staff notes and other people's data |
 | **A sponsor** | Only their linked child: first name, age, stage, photo, interests, aspirations, class, progress and support given. Never the surname, address, guardian details, income, health or school |
 | **A mentor** | Only children they are matched to: first name, age, interests, aspirations, class, skills, photo, career quiz result; the messages and their own notes. Never address, guardian, income or health. A mentor can read a child's record only after the vetting and both consents (mentor and guardian) are complete |
@@ -130,7 +130,7 @@ Under the NDPA a person (or a child's guardian) may ask for a copy of their data
 
 ## 8. Security measures (summary)
 
-- Sign-in with a password or Google. **Admins must also use an authenticator app** (two-factor), enforced on every admin page and action. At least two admins are recommended.
+- Sign-in with a password or Google. **Admins can use an authenticator app** (two-factor). It is built and enforced on every admin page and action when the setting `ADMIN_MFA_REQUIRED=true` is on; **it is currently off and must be switched on before launch** (see `docs/LAUNCH_CHECKLIST.md`). At least two admins are recommended.
 - Row-level security on every table, tested automatically against seven kinds of user, plus the storage buckets.
 - Suspended or inactive accounts lose all database access immediately.
 - Input checked on the server for every action; rate limits on sign-in, sign-up and password reset; security headers and a content security policy.

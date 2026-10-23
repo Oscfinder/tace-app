@@ -3,6 +3,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 import { getDashboardPath } from "@/lib/auth/guards";
 import { ROLES, type Role } from "@/types/roles";
 import { buildCsp, newNonce } from "@/lib/security/csp";
+import { isAdminMfaRequired } from "@/lib/security/mfa";
 
 const AUTH_PREFIXES = ["/login", "/signup"];
 
@@ -99,9 +100,10 @@ async function route(request: NextRequest) {
     if (!pathname.startsWith(correctPath)) {
       return NextResponse.redirect(new URL(correctPath, request.url));
     }
-    // Admins need a second factor before any admin page (requireRole checks
-    // again for Server Actions, which can be posted to any URL).
-    if (role === "admin") {
+    // With ADMIN_MFA_REQUIRED=true, admins need a second factor before any admin
+    // page (requireRole checks again for Server Actions, which can be posted to
+    // any URL). Off by default: see lib/security/mfa.ts.
+    if (role === "admin" && isAdminMfaRequired()) {
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aal?.currentLevel !== "aal2") {
         return NextResponse.redirect(new URL("/admin-2fa", request.url));
