@@ -737,6 +737,10 @@ export type Database = {
       get_mentor_id: { Args: Record<string, never>; Returns: string };
       get_sponsor_id: { Args: Record<string, never>; Returns: string };
       mark_thread_read: { Args: { p_match_id: string }; Returns: undefined };
+      erase_beneficiary_records: {
+        Args: { p_beneficiary_id: string; p_include_safeguarding?: boolean };
+        Returns: Record<string, unknown>;
+      };
       rate_limit_hit: {
         Args: { p_bucket: string; p_key_hash: string; p_max: number; p_window_seconds: number };
         Returns: boolean;

@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:db": "node supabase/tests/db_tests.mjs"
+    "test": "npm run test:db && npm run test:rls",
+    "test:db": "node supabase/tests/db_tests.mjs",
+    "test:rls": "node supabase/tests/rls_audit.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

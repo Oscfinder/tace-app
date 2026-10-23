@@ -34,7 +34,7 @@ export async function submitAssessment(input: unknown): Promise<Result> {
   // 1. Who is this, and are they old enough?
   const { data: child } = await supabase
     .from("beneficiaries")
-    .select("id, date_of_birth")
+    .select("id, date_of_birth, first_name, last_name, school_name")
     .eq("profile_id", session.user.id)
     .maybeSingle();
   if (!child) return { error: "We couldn't find your profile. Please try again." };
@@ -86,6 +86,8 @@ export async function submitAssessment(input: unknown): Promise<Result> {
       percent: Math.round((score.scores[id] / score.maxScore) * 100),
     })),
     reflections,
+    // Never let the child's own names or school reach the AI provider.
+    personalTerms: [child.first_name, child.last_name, child.school_name],
   });
 
   // 6. Save (RLS: a beneficiary may insert only for themselves).

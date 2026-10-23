@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { CLUSTERS, type ClusterId } from "@/lib/career/clusters";
 import { mentionsUnsuppliedProgramme } from "@/lib/career/narrative-check";
+import { redactReflection } from "@/lib/career/redact";
 
 // ──────────────────────────────────────────────────────────────────────────
 // The ONLY place that knows which AI provider is used. To swap providers,
@@ -51,6 +52,8 @@ export type NarrativeInput = {
   ageBracket: "11-13" | "14-17" | "18+";
   topClusters: { id: ClusterId; percent: number }[];
   reflections: string[];
+  /** The child's own name, school, etc.: removed from the reflections before sending. */
+  personalTerms?: (string | null | undefined)[];
 };
 
 // Privacy: the payload contains NO name, surname, TACE ID, location or school —
@@ -65,7 +68,9 @@ export function buildPayload(input: NarrativeInput) {
       exampleRoles: CLUSTERS[c.id].roles,
       taceProgramme: CLUSTERS[c.id].programme,
     })),
-    reflections: input.reflections.filter(Boolean),
+    reflections: input.reflections
+      .filter(Boolean)
+      .map((r) => redactReflection(r, input.personalTerms)),
   };
 }
 

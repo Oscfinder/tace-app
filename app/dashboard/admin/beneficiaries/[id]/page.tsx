@@ -18,6 +18,7 @@ import { StageManager } from "@/components/admin/beneficiaries/stage-manager";
 import { MentorAssignment } from "@/components/admin/beneficiaries/mentor-assignment";
 import { InterventionLogger } from "@/components/admin/beneficiaries/intervention-logger";
 import { DocumentUploader } from "@/components/admin/beneficiaries/document-uploader";
+import { DataPrivacyPanel } from "@/components/admin/beneficiaries/data-privacy-panel";
 import { calculateAge } from "@/lib/age";
 import { getAssessments } from "@/lib/career/queries";
 import { CareerAssessmentCard } from "@/components/admin/beneficiaries/career-assessment-card";
@@ -199,6 +200,11 @@ export default async function BeneficiaryProfilePage({
           <DocumentUploader
             beneficiaryId={beneficiary.id}
             documents={documents}
+          />
+
+          <DataPrivacyPanel
+            beneficiaryId={beneficiary.id}
+            taceId={beneficiary.tace_id ?? ""}
           />
         </div>
       </div>

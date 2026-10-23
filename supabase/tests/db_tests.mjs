@@ -549,5 +549,54 @@ ok("another key is unaffected", (await rl015(null, "other-key")).rows[0].ok === 
 const rd015 = await as("c1", () => tryq(`select * from public.rate_limit_events`));
 ok("rate_limit_events is unreadable to signed-in users", !rd015.err && rd015.rows.length === 0);
 
+console.log("== 016: erase one child's data ==");
+await mkUser("c9", "member");
+await db.exec(`update public.profiles set status='active'`);
+await db.query(`update public.profiles set role='beneficiary' where id=$1`, [U.c9]);
+const app9 = (await q(`insert into public.applications (child_first_name, child_last_name, child_dob, guardian_phone) values ('Erase','Me','2014-01-01','08011112222') returning id`))[0].id;
+const kid9 = (await q(`insert into public.beneficiaries (profile_id, application_id, first_name,last_name,date_of_birth) values ($1,$2,'Erase','Me','2014-01-01') returning id`, [U.c9, app9]))[0].id;
+const match9 = (await q(`insert into public.mentorship_matches (mentor_id, beneficiary_id) values ($1,$2) returning id`, [mn.m2, kid9]))[0].id;
+await db.query(`insert into public.mentorship_messages (match_id,sender_id,sender_type,content) values ($1,$2,'mentor','hello 9'),($1,$3,'beneficiary','hi 9')`, [match9, U.m2, U.c9]);
+await db.query(`insert into public.mentorship_notes (match_id, mentor_id, topics_discussed) values ($1,$2,'note 9')`, [match9, mn.m2]);
+await db.query(`insert into public.career_assessments (beneficiary_id) values ($1)`, [kid9]);
+await db.query(`insert into public.thank_you_messages (beneficiary_id, content) values ($1,'thanks 9')`, [kid9]);
+await db.query(`insert into public.progress_updates (beneficiary_id,title,content) values ($1,'t','c')`, [kid9]);
+await db.query(`insert into public.interventions (beneficiary_id,type) values ($1,'books')`, [kid9]);
+await db.query(`insert into public.donations (donor_name, amount, beneficiary_id) values ('Kind donor', 50, $1)`, [kid9]);
+await db.query(`insert into public.stories (title, content, is_published, beneficiary_id) values ('About 9','x',true,$1)`, [kid9]);
+await db.query(`insert into public.notifications (profile_id, title) values ($1,'n9')`, [U.c9]);
+await db.query(`insert into public.safeguarding_concerns (raised_by, beneficiary_id, match_id, description) values ($1,$2,$3,'worry')`, [U.m2, kid9, match9]);
+const c1Before = (await q(`select (select count(*) from public.progress_updates where beneficiary_id=$1)::int p, (select count(*) from public.mentorship_messages where match_id=$2)::int m`, [kid.c1, MID]))[0];
+
+const e1 = await tryq(`select public.erase_beneficiary_records($1, false)`, [kid9]);
+ok("erase REFUSES while safeguarding concerns exist (default)", !!e1.err && /safeguarding_records_exist/.test(e1.err), e1.err);
+ok("...and deletes nothing when it refuses", (await q(`select id from public.beneficiaries where id=$1`, [kid9])).length === 1 && (await q(`select id from public.mentorship_messages where match_id=$1`, [match9])).length === 2);
+await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub', '${U.admin}', false);`);
+const e2 = await tryq(`select public.erase_beneficiary_records($1, true)`, [kid9]);
+await db.exec(`reset role; select set_config('request.jwt.claim.sub','',false);`);
+ok("even a signed-in admin cannot call the erase function directly (service role only)", !!e2.err && /permission denied/i.test(e2.err), e2.err);
+
+const e3 = await tryq(`select public.erase_beneficiary_records($1, true) as r`, [kid9]);
+ok("erase with the safeguarding choice succeeds", !e3.err, e3.err);
+const rep = e3.rows?.[0]?.r;
+ok("it reports what was removed and the ids to clean up outside the database", rep?.tace_id && rep.profile_id === U.c9 && rep.application_id === app9 && rep.counts.mentorship_messages === 2, JSON.stringify(rep));
+const gone = async (sql, p) => (await q(sql, p)).length === 0;
+ok("child record removed", await gone(`select 1 from public.beneficiaries where id=$1`, [kid9]));
+ok("application (guardian contact details) removed", await gone(`select 1 from public.applications where id=$1`, [app9]));
+ok("match, messages and notes removed", await gone(`select 1 from public.mentorship_matches where id=$1`, [match9]) && await gone(`select 1 from public.mentorship_messages where match_id=$1`, [match9]) && await gone(`select 1 from public.mentorship_notes where match_id=$1`, [match9]));
+ok("career results, thank-yous, progress, support records removed",
+  await gone(`select 1 from public.career_assessments where beneficiary_id=$1`, [kid9]) && await gone(`select 1 from public.thank_you_messages where beneficiary_id=$1`, [kid9]) &&
+  await gone(`select 1 from public.progress_updates where beneficiary_id=$1`, [kid9]) && await gone(`select 1 from public.interventions where beneficiary_id=$1`, [kid9]));
+ok("safeguarding concerns removed (only because that was chosen)", await gone(`select 1 from public.safeguarding_concerns where beneficiary_id=$1`, [kid9]));
+ok("the child's notifications removed", await gone(`select 1 from public.notifications where profile_id=$1`, [U.c9]));
+const don = (await q(`select beneficiary_id, amount from public.donations where donor_name='Kind donor'`))[0];
+ok("the donation record is kept, with the link to the child cut", don && don.beneficiary_id === null && Number(don.amount) === 50);
+const sty = (await q(`select beneficiary_id, is_published from public.stories where title='About 9'`))[0];
+ok("the story is kept but unpublished and unlinked", sty && sty.beneficiary_id === null && sty.is_published === false);
+const c1After = (await q(`select (select count(*) from public.progress_updates where beneficiary_id=$1)::int p, (select count(*) from public.mentorship_messages where match_id=$2)::int m`, [kid.c1, MID]))[0];
+ok("another child's data is untouched", JSON.stringify(c1After) === JSON.stringify(c1Before), JSON.stringify([c1Before, c1After]));
+const e4 = await tryq(`select public.erase_beneficiary_records($1, true)`, [kid9]);
+ok("a second erase of the same child fails cleanly", !!e4.err && /beneficiary_not_found/.test(e4.err));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -72,10 +72,10 @@ export const QUESTIONS: Question[] = [
   // Two short open prompts (treated strictly as data, never as instructions).
   { id: "t1", type: "text",
     prompt: "What is something you are really proud of doing?",
-    placeholder: "Write a sentence or two (optional)" },
+    placeholder: "Write a sentence or two (optional). Please do not write names, your school or phone numbers." },
   { id: "t2", type: "text",
     prompt: "What would you love to do when you grow up?",
-    placeholder: "Write a sentence or two (optional)" },
+    placeholder: "Write a sentence or two (optional). Please do not write names, your school or phone numbers." },
 ];
 
 export const QUESTION_IDS = QUESTIONS.map((q) => q.id);
