@@ -6,8 +6,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth/guards";
 import { INVALID_REQUEST, applicationNotesInput, approveInput, rejectInput, flagInput } from "@/lib/admin/schemas";
 import { logAudit } from "@/lib/admin/audit";
-import { sendEmail } from "@/lib/email/send";
-import { escapeHtml } from "@/lib/email/escape";
+import { emailContext, sendEmail } from "@/lib/email/send";
+import * as emails from "@/lib/email/templates";
 import { getSiteUrl } from "@/lib/site-url";
 import { movePhotoToBeneficiary } from "@/lib/storage/move-photo";
 import { createMatchCore } from "@/lib/admin/matches-core";
@@ -218,14 +218,12 @@ export async function approveApplication(input: {
 
     await sendEmail({
       to: loginEmail,
-      subject: "TACE Foundation — Your application has been approved",
-      html: `<p>Hi ${escapeHtml(application.guardian_name ?? application.child_first_name)},</p>
-<p>${escapeHtml(application.child_first_name)}'s application to TACE Welfare Foundation has been approved. Their TACE ID is <strong>${beneficiary.tace_id}</strong>.</p>
-<p>An account has been created using this email address.${
-        actionLink
-          ? ` <a href="${actionLink}">Click here to set your password and sign in</a>.`
-          : " You'll receive a separate link to set a password and sign in."
-      }</p>`,
+      ...emails.applicationApproved(emailContext(), {
+        greetingName: application.guardian_name ?? application.child_first_name,
+        childFirstName: application.child_first_name,
+        taceId: beneficiary.tace_id ?? "",
+        setPasswordLink: actionLink ?? null,
+      }),
     });
   } catch (err) {
     console.error("Approval email failed to send:", err);
@@ -278,10 +276,10 @@ export async function rejectApplication(input: {
     try {
       await sendEmail({
         to: notifyEmail,
-        subject: "TACE Foundation — Update on your application",
-        html: `<p>Thank you for applying to TACE Welfare Foundation on behalf of ${escapeHtml(application.child_first_name)}.</p>
-<p>After review, we're not able to proceed with this application at this time. ${escapeHtml(input.reason)}</p>
-<p>You're welcome to apply again in the future.</p>`,
+        ...emails.applicationRejected(emailContext(), {
+          childFirstName: application.child_first_name,
+          reason: input.reason,
+        }),
       });
     } catch (err) {
       console.error("Rejection email failed to send:", err);

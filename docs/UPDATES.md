@@ -1,5 +1,49 @@
 # TACE Platform — Updates Log
 
+## Nov 2, 2026 — Ticket 5C: Performance, errors & email (code done; the real-inbox and live-site checks wait for the domain)
+
+**For the next agent: 5A, 5B and 5C are built. Start at Ticket 5D in `docs/PHASE_5.md`. Read `docs/EMAIL_SETUP.md` too.**
+
+### Migration to run in Supabase (after 016)
+`017_indexes_and_integrity.sql`, idempotent. **It first checks the existing data and stops with a plain message, changing nothing, if anything would break the new rules** (a child with two open mentor matches, a mentor with more than 5 open mentees, a zero or negative donation or other amount). If it stops, fix the rows it names and run it again. It adds 34 indexes (33 plain, 1 partial unique) for the queries the dashboards run, and these rules at the database level: one open mentor match per child; at most 5 open mentees per mentor (safe even if two admins match at the same moment); amounts never negative and donations above zero. Valid journey stages were already enforced since migration 001 (a test now checks the 9 values match the app's list).
+
+### Tests
+`npm test` now runs `test:unit` (17 checks: safe redirects, career-text redaction, error-report scrubbing, the 2FA switch, all 15 email templates), `test:db` (213 checks, including 017: the rules, 14 "this index is used by this query" plan checks, and the stop-and-change-nothing behaviour) and `test:rls` (1,018). All pass.
+
+### What 5C delivered
+1. **Error handling.** `error.tsx` and `loading.tsx` in every route group and dashboard (public, auth, admin, member, sponsor, mentor, beneficiary), a friendly `not-found.tsx` (site and dashboard) and `global-error.tsx`. **This Next.js version passes `retry`, not `reset`, to error screens.** The screens show kind words, "Try again" and a way out, never an error message or stack, plus a short reference code. Server errors are caught by `instrumentation.ts` (`onRequestError`): the full error goes to the server log (Vercel logs) with the digest and route; a scrubbed copy goes to the error tracker if configured. Crashed screens tell the server through `/api/client-error` (digest, path with ids removed and a scope only; rate limited; tested with 10 cases). Checked by forcing an error on a real dashboard page: friendly message shown, the secret text (a name, email and phone number put in the error) is not in the page, the full error is in the server log.
+2. **Error tracking** (`@sentry/node`, server side only, so no extra weight for visitors). Off until `SENTRY_DSN` is set. Configured to collect nothing about the request or person (Sentry 11 `dataCollection`), no breadcrumbs or traces, plus a scrubbing pass (`lib/monitoring/scrub.ts`). **Inspected a real report**: the real SDK sent an error whose message held a name, email, phone number and message text to a local receiver; the report arrived as `Could not send message to [text] <[email]> phone [number]: [text]` with only the type, digest, route and code location.
+3. **`/api/health`**: `{"status":"ok"}` (200) when the database answers, `{"status":"fail"}` (503) otherwise, in 5 seconds at most, no details. Tested up and down. Point the uptime monitor at it (5E).
+4. **Email.** All 15 emails rewritten on one branded layout with a plain-text twin (`lib/email/layout.ts`, `templates.ts`), first names only, no marketing, user text escaped, new-message emails never include the message. Two emails are new: **new message notice** (one per unread conversation, same throttle as the bell) and **mentor request** (to the mentor, and "a mentor has been suggested" to the family). Sender and reply-to come from `EMAIL_FROM` / `EMAIL_REPLY_TO`. **Dev-only preview:** run `npm run dev`, sign in as admin, open `/dashboard/admin/email-preview`; on the live site it shows "page not found". Sign-up and password emails are sent by Supabase: ready-to-paste files are in `docs/email-templates/` (regenerate with `node scripts/generate-auth-email-templates.mjs`). Supabase only sends HTML for those two; it has no plain-text field.
+5. **Performance.** Reports in `docs/lighthouse/landing-page.json`. Landing page, production build on a PC with a stand-in database:
+
+   | | Performance | Accessibility | Notes |
+   |---|---|---|---|
+   | Mobile, before | 87 | 89 | |
+   | Desktop, before | 77 | 89 | layout shift 0.49 |
+   | **Mobile, after (repeat visit)** | **100** | **100** | |
+   | Mobile, after (first visit, image not cached yet) | **82** | 100 | misses the 85 target by 3: the hero photo is resized on its first request |
+   | **Desktop, after** | **99 to 100** | **100** | |
+
+   What changed: the counting numbers no longer move the page (layout shift 0.49 to 0); the General Sans font and the stock photos are now served from our own server instead of fontshare.com and unsplash.com (removes a render-blocking request and two outside sites; CSP tightened to match); colour contrast fixed by darkening `--tace-blue` (#1597d1 to #0a6c9c) and `--tace-gray`, and brightening faint text on dark sections; heading order, form labels and a vague "Learn More" link fixed; 12 photos switched to `next/image` with sizes (the remaining raw images are blob/data previews that cannot be optimised). **What blocks the 85 on a cold mobile run:** the first request for the 326 KB hero photo; on Vercel this is served from cache after the first visit, but run Lighthouse again on the live site and consider a smaller hero file. **The brand blue is now darker on the public site**; show Simon.
+   - **Landing page data is cached** for 5 minutes and shared (stats, published stories, featured children with photography consent) using `unstable_cache`, refreshed at once when staff publish a story or project or log a donation (`lib/public/refresh.ts`). Nothing about a signed-in person is cached. Public data is read with an anonymous client so row-level security decides what is public.
+   - First-load JavaScript (gzip): landing 227 KB, donate 221 KB, dashboards 250 to 325 KB, login and sign-up about 400 KB (forms library, validation and the Supabase browser client). Worth trimming in a later pass; not done.
+   - No unused runtime packages (depcheck). `prettier` is an unused dev tool and was left.
+   - **Query plans:** with tiny test data the planner ignores indexes, so 14 representative queries were checked with sequential scans switched off to prove each index fits its query. A real EXPLAIN on production data should be run after launch (5E).
+
+### Not done or not verifiable here
+- **Real email delivery and the "external inbox from the custom domain" check**: needs the domain, Resend verification and Supabase SMTP (steps in `docs/EMAIL_SETUP.md`). Until `EMAIL_FROM` is set, Resend only delivers to the account owner.
+- **Lighthouse on the live site**; the numbers above are from a PC.
+- **Sentry itself** (no account): the scrubbing was proven with the real SDK against a local receiver, not against Sentry.
+- Pages for which Lighthouse found 404s: the public pages that still do not exist (`/about`, `/programmes`, `/sponsor`, `/stories`, `/contact`, `/privacy`, `/terms`, `/child-protection-policy`); the navbar and footer link to them.
+- Production still shows a "page not found" screen with HTTP status 200 for the dev-only email preview (a streaming page cannot change its status); no email content is shown.
+- The image optimiser keeps resized copies of children's photos for a few hours; a copy is only reachable by someone holding the original one-hour signed link. Accepted.
+
+### Gotchas worth knowing
+- `scripts/render-test/*` now takes `PORT=3124` for the dev server. The old scratch copies of the mock were lost; use the ones in the repo.
+- On Windows, kill servers with `taskkill /F /PID <pid>` (single slash) when `MSYS_NO_PATHCONV=1` is set, or they keep running with an old build.
+- The mentor cap (5) and the stages are now in the database as well as in `lib/mentoring/constants.ts` / `lib/beneficiary-stages.ts`: change both.
+
 ## Oct 23, 2026 — Admin two-factor is now a switch, currently OFF (accepted risk until launch)
 
 **Read this before touching admin sign-in. It changes what the 5B entry below says about two-factor.**

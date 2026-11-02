@@ -55,6 +55,8 @@ await applyAll("012 again (idempotency)", "012");
 await applyAll("012 a third time", "012");
 await applyAll("013 again (idempotency)", "013");
 await applyAll("013 a third time", "013");
+await applyAll("017 again (idempotency)", "017");
+await applyAll("017 a third time", "017");
 
 let pass = 0,
   fail = 0;
@@ -597,6 +599,104 @@ const c1After = (await q(`select (select count(*) from public.progress_updates w
 ok("another child's data is untouched", JSON.stringify(c1After) === JSON.stringify(c1Before), JSON.stringify([c1Before, c1After]));
 const e4 = await tryq(`select public.erase_beneficiary_records($1, true)`, [kid9]);
 ok("a second erase of the same child fails cleanly", !!e4.err && /beneficiary_not_found/.test(e4.err));
+
+console.log("== 017: indexes + integrity rules ==");
+{
+
+// --- rules ---
+await mkUser("c17", "member"); await mkUser("c17b", "member");
+await db.exec(`update public.profiles set status='active'`);
+const mk17 = async (n) => (await q(`insert into public.beneficiaries (first_name,last_name,date_of_birth) values ($1,'X','2014-01-01') returning id`, [n]))[0].id;
+const k17 = await mk17("K17");
+const m17a = (await q(`insert into public.mentorship_matches (mentor_id, beneficiary_id) values ($1,$2) returning id`, [mn.m2, k17]))[0].id;
+const dup = await tryq(`insert into public.mentorship_matches (mentor_id, beneficiary_id) values ($1,$2)`, [mn.m1, k17]);
+ok("a child cannot have two open mentor matches (even at the database)", !!dup.err && /one_open_per_child|duplicate/i.test(dup.err), dup.err);
+await db.query(`update public.mentorship_matches set status='terminated' where id=$1`, [m17a]);
+const again = await tryq(`insert into public.mentorship_matches (mentor_id, beneficiary_id) values ($1,$2)`, [mn.m1, k17]);
+ok("...but a new match is fine once the old one has ended", !again.err, again.err);
+await db.query(`update public.mentorship_matches set status='terminated' where beneficiary_id=$1`, [k17]);
+
+// mentor cap: put mentor m2 at 5 open mentees, the 6th is refused
+await db.query(`update public.mentorship_matches set status='terminated' where mentor_id=$1 and status in ('pending_consent','active')`, [mn.m2]);
+for (let i = 0; i < 5; i++) {
+  const k = await mk17(`Cap${i}`);
+  const r = await tryq(`insert into public.mentorship_matches (mentor_id, beneficiary_id) values ($1,$2)`, [mn.m2, k]);
+  ok(`mentor accepts mentee ${i + 1} of 5`, !r.err, r.err);
+}
+const kSix = await mk17("Cap6");
+const six = await tryq(`insert into public.mentorship_matches (mentor_id, beneficiary_id) values ($1,$2)`, [mn.m2, kSix]);
+ok("the 6th open mentee for one mentor is refused by the database", !!six.err && /maximum|5 mentees/i.test(six.err), six.err);
+await db.query(`update public.mentorship_matches set status='terminated' where mentor_id=$1`, [mn.m2]);
+
+const bad = {
+  "a zero-amount donation": `insert into public.donations (donor_name, amount) values ('x', 0)`,
+  "a negative donation": `insert into public.donations (donor_name, amount) values ('x', -5)`,
+  "a negative support amount": `insert into public.interventions (beneficiary_id, type, amount) values ('${k17}','x',-1)`,
+  "a negative project target": `insert into public.projects (title, target_amount) values ('x', -1)`,
+};
+for (const [label, sql] of Object.entries(bad)) ok(`${label} is refused`, !!(await tryq(sql)).err);
+ok("a positive donation is fine", !(await tryq(`insert into public.donations (donor_name, amount) values ('x', 1)`)).err);
+ok("an empty (null) support amount is still fine", !(await tryq(`insert into public.interventions (beneficiary_id, type) values ('${k17}','books')`)).err);
+const stageDef = (await q(`select pg_get_constraintdef(oid) d from pg_constraint where conrelid='public.beneficiaries'::regclass and contype='c' and pg_get_constraintdef(oid) like '%current_stage%'`))[0].d;
+const STAGES = ["identified", "assessed", "education_support", "vocational_training", "certification", "apprenticeship", "savings", "employment", "business_owner"];
+ok("the database accepts exactly the 9 journey stages the app uses", STAGES.every((s) => stageDef.includes(`'${s}'`)) && (stageDef.match(/'[a-z_]+'::text/g) ?? []).length === 9, stageDef);
+ok("an invalid stage is refused", !!(await tryq(`update public.beneficiaries set current_stage='teleported' where id=$1`, [k17])).err);
+
+// --- indexes are usable (planner forced off sequential scans to prove the index fits the query) ---
+await db.exec(`set enable_seqscan = off`);
+const plan = async (sql, p) => (await q(`explain ${sql}`, p)).map((r) => r["QUERY PLAN"]).join("\n");
+const expectIdx = [
+  ["pending applications, newest first", `select * from public.applications where status='pending' order by created_at desc limit 20`, "applications_status_created_idx"],
+  ["a child's progress updates", `select * from public.progress_updates where beneficiary_id='${k17}' order by created_at desc`, "progress_updates_child_created_idx"],
+  ["a thread's messages in order", `select * from public.mentorship_messages where match_id='${MID}' order by created_at`, "mentorship_messages_match_created_idx"],
+  ["a sender's messages in the last hour (rate limit)", `select count(*) from public.mentorship_messages where sender_id='${U.m1}' and created_at > now() - interval '1 hour'`, "mentorship_messages_sender_created_idx"],
+  ["a mentor's open matches", `select * from public.mentorship_matches where mentor_id='${mn.m1}' and status='active'`, "mentorship_matches_mentor_status_idx"],
+  ["a child's matches", `select * from public.mentorship_matches where beneficiary_id='${k17}' and status='active'`, "mentorship_matches_child_status_idx"],
+  ["a sponsor's children", `select * from public.beneficiaries where sponsor_id='${sp.s1}'`, "beneficiaries_sponsor_idx"],
+  ["a child's account record", `select * from public.beneficiaries where profile_id='${U.c1}'`, "beneficiaries_profile_idx"],
+  ["children by journey stage", `select * from public.beneficiaries where current_stage='assessed'`, "beneficiaries_stage_idx"],
+  ["pending thank-you messages", `select * from public.thank_you_messages where status='pending' order by created_at desc`, "thank_you_status_created_idx"],
+  ["published stories", `select * from public.stories where is_published order by published_at desc`, "stories_published_idx"],
+  ["flagged messages", `select * from public.mentorship_messages where is_flagged order by created_at desc`, "mentorship_messages_flagged_idx"],
+  ["admins by role and status", `select * from public.profiles where role='admin' and status='active'`, "profiles_role_status_idx"],
+  ["a child's concerns", `select * from public.safeguarding_concerns where beneficiary_id='${k17}'`, "safeguarding_child_idx"],
+];
+for (const [label, sql, idx] of expectIdx) {
+  const p = await plan(sql);
+  const usable = p.includes(idx) || (idx === "mentorship_matches_child_status_idx" && p.includes("mentorship_matches_one_open_per_child")); // the partial unique index also serves open-match lookups
+  ok(`index used: ${label}`, usable, p.split(String.fromCharCode(10))[0]);
+}
+await db.exec(`reset enable_seqscan`);
+
+// --- pre-flight: bad existing data stops the migration and changes nothing ---
+{
+  const db2 = new PGlite();
+  await db2.exec(STUB);
+  const all = fs.readdirSync(MIG).filter((f) => f.endsWith(".sql")).sort();
+  for (const f of all.filter((x) => x < "017")) {
+    await db2.exec(fs.readFileSync(path.join(MIG, f), "utf8").replace(/create extension if not exists pgcrypto;/i, ""));
+  }
+  const u = (await db2.query(`insert into auth.users (email, raw_user_meta_data) values ('m@t.test','{"full_name":"M","role":"mentor"}') returning id`)).rows[0].id;
+  await db2.exec(`update public.profiles set status='active'`);
+  const mentor = (await db2.query(`insert into public.mentors (profile_id, profession, mentor_track) values ($1,'x','tech') returning id`, [u])).rows[0].id;
+  await db2.exec(`update public.mentors set vetting_status='cleared'`);
+  const kid = (await db2.query(`insert into public.beneficiaries (first_name,last_name,date_of_birth) values ('A','B','2014-01-01') returning id`)).rows[0].id;
+  await db2.query(`insert into public.mentorship_matches (mentor_id, beneficiary_id) values ($1,$2)`, [mentor, kid]);
+  await db2.query(`insert into public.mentorship_matches (mentor_id, beneficiary_id) values ($1,$2)`, [mentor, kid]); // a second open match: allowed before 017
+  await db2.exec(`insert into public.donations (donor_name, amount) values ('bad', -10)`);
+  let msg = "";
+  try { await db2.exec(fs.readFileSync(path.join(MIG, "017_indexes_and_integrity.sql"), "utf8")); } catch (e) { msg = e.message; }
+  ok("017 STOPS when existing data breaks a rule", /017 stopped/.test(msg), msg);
+  ok("...and names both problems", /more than one open mentor match/.test(msg) && /donation\(s\) have an amount of zero or less/.test(msg), msg);
+  const left = (await db2.query(`select count(*)::int c from pg_indexes where indexname in ('applications_status_created_idx','mentorship_matches_one_open_per_child')`)).rows[0].c;
+  ok("...and creates nothing", left === 0, String(left));
+  await db2.exec(`delete from public.donations; delete from public.mentorship_matches where id = (select id from public.mentorship_matches limit 1)`);
+  let ok2 = true;
+  try { await db2.exec(fs.readFileSync(path.join(MIG, "017_indexes_and_integrity.sql"), "utf8")); } catch (e) { ok2 = false; msg = e.message; }
+  ok("once the data is fixed, 017 runs", ok2, msg);
+  await db2.close();
+}
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

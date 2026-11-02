@@ -33,6 +33,7 @@ export const LIMITS = {
   resetEmail: { bucket: "reset-email", max: 3, windowSeconds: 60 * 60 },
   contactIp: { bucket: "contact-ip", max: 5, windowSeconds: 60 * 60 },
   receiptIp: { bucket: "receipt-ip", max: 5, windowSeconds: 60 * 60 },
+  clientError: { bucket: "client-error-ip", max: 30, windowSeconds: 10 * 60 },
 } satisfies Record<string, Limit>;
 
 export const RATE_LIMITED_MESSAGE =

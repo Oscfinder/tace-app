@@ -8,6 +8,7 @@ import {
   type BellNotification,
 } from "@/components/shared/notification-bell";
 import { initialsOf } from "@/components/member/member-sidebar";
+import Image from "next/image";
 
 const LABELS: Record<string, string> = {
   updates: "Foundation Updates",
@@ -55,10 +56,12 @@ export function MemberHeader({
           className="flex items-center gap-[9px] rounded-xl pl-1"
         >
           {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={avatarUrl}
               alt=""
+              width={36}
+              height={36}
+              sizes="36px"
               className="size-9 rounded-xl object-cover"
             />
           ) : (

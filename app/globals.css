@@ -93,15 +93,14 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --tace-blue: #1597d1;
-  --tace-blue-deep: #0873a5;
+  --tace-blue: #0a6c9c; /* darker than the old #1597d1, which was 3.3:1 on white; this is 5.8:1 */
+  --tace-blue-deep: #075a85;
   --tace-yellow: #f4c400;
   --tace-navy: #102033;
   --tace-red: #e7473f;
   --tace-green: #239b63;
-  --tace-gray: #64748b;
+  --tace-gray: #556479; /* 6:1 on white, 5.6:1 on the light grey; was 4.5:1 */
   --tace-lgray: #f5f8fb;
-  --font-general-sans: "General Sans", ui-sans-serif, system-ui, sans-serif;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);

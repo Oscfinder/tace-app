@@ -10,6 +10,7 @@ import { CheckInForm } from "@/components/mentor/check-in-form";
 import { NotesForm } from "@/components/mentor/notes-form";
 import { JourneyTracker } from "@/components/shared/journey-tracker";
 import { IconTile, Panel, Pill } from "@/components/member/ui";
+import Image from "next/image";
 
 const TRACKS = { career: "Career", tech: "Tech" } as const;
 
@@ -38,10 +39,12 @@ export default async function MenteePage({
       <section className="rounded-[22px] border border-m-line bg-white p-5 shadow-m-card sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           {photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={photoUrl}
               alt={`${mentee.first_name}'s photo`}
+              width={96}
+              height={96}
+              sizes="96px"
               className="size-24 shrink-0 rounded-2xl object-cover ring-4 ring-[#e5f6ff]"
             />
           ) : (

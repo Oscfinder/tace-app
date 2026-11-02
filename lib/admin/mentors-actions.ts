@@ -5,8 +5,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
 import { logAudit } from "@/lib/admin/audit";
-import { sendEmail } from "@/lib/email/send";
-import { getSiteUrl } from "@/lib/site-url";
+import { emailContext, sendEmail } from "@/lib/email/send";
+import * as emails from "@/lib/email/templates";
 import { VETTING_ITEMS, checklistComplete } from "@/lib/mentoring/constants";
 
 type ActionResult = { error: string } | { success: true };
@@ -23,12 +23,6 @@ const baseSchema = z.object({
 // Store every item as an explicit true/false.
 function normaliseChecklist(c: Record<string, boolean | undefined>): Record<string, boolean> {
   return Object.fromEntries(VETTING_ITEMS.map((i) => [i.key, c[i.key] === true]));
-}
-
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
-  );
 }
 
 async function loadMentor(supabase: Awaited<ReturnType<typeof createClient>>, mentorId: string) {
@@ -107,10 +101,10 @@ export async function clearMentor(input: {
   try {
     await sendEmail({
       to: found.profile.email,
-      subject: "TACE Foundation — you have been cleared as a mentor",
-      html: `<p>Hi ${escapeHtml(found.profile.full_name)},</p>
-<p>Thank you for completing our vetting process. We are pleased to tell you that you have been <strong>cleared</strong> as a TACE mentor.</p>
-<p>${found.profile.status === "active" ? `You can now <a href="${getSiteUrl()}/login">sign in</a>.` : "We will activate your account shortly and email you when it is ready."}</p>`,
+      ...emails.mentorCleared(emailContext(), {
+        name: found.profile.full_name,
+        accountActive: found.profile.status === "active",
+      }),
     });
   } catch (err) {
     console.error("Clearance email failed:", err);
@@ -188,10 +182,7 @@ export async function rejectMentor(input: {
   try {
     await sendEmail({
       to: found.profile.email,
-      subject: "TACE Foundation — update on your mentor application",
-      html: `<p>Hi ${escapeHtml(found.profile.full_name)},</p>
-<p>Thank you for your interest in mentoring with TACE Foundation. After careful review, we are unable to take your application forward at this time.</p>
-<p>We appreciate the time you gave to the process. If you have questions, please reply to this email.</p>`,
+      ...emails.mentorRejected(emailContext(), { name: found.profile.full_name }),
     });
   } catch (err) {
     console.error("Rejection email failed:", err);
@@ -226,9 +217,7 @@ export async function activateMentorAccount(input: {
   try {
     await sendEmail({
       to: found.profile.email,
-      subject: "TACE Foundation — your mentor account is active",
-      html: `<p>Hi ${escapeHtml(found.profile.full_name)},</p>
-<p>Your mentor account is now active. <a href="${getSiteUrl()}/login">Sign in</a> to read and accept the code of conduct and to see any mentoring requests.</p>`,
+      ...emails.mentorAccountActive(emailContext(), { name: found.profile.full_name }),
     });
   } catch (err) {
     console.error("Activation email failed:", err);

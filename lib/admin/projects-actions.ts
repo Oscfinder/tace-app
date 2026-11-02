@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { refreshPublicHome } from "@/lib/public/refresh";
 import { INVALID_REQUEST, projectInput, attachInput, uuid } from "@/lib/admin/schemas";
 import { getConsentWarnings } from "@/lib/admin/projects";
 
@@ -115,7 +116,7 @@ export async function publishProject(input: {
 
   revalidatePath("/dashboard/admin/projects");
   revalidatePath(`/dashboard/admin/projects/${input.projectId}`);
-  revalidatePath("/");
+  refreshPublicHome();
   return { success: true };
 }
 
@@ -134,7 +135,7 @@ export async function unpublishProject(
 
   revalidatePath("/dashboard/admin/projects");
   revalidatePath(`/dashboard/admin/projects/${projectId}`);
-  revalidatePath("/");
+  refreshPublicHome();
   return { success: true };
 }
 
@@ -154,6 +155,6 @@ export async function archiveProject(projectId: string): Promise<ActionResult> {
 
   revalidatePath("/dashboard/admin/projects");
   revalidatePath(`/dashboard/admin/projects/${projectId}`);
-  revalidatePath("/");
+  refreshPublicHome();
   return { success: true };
 }

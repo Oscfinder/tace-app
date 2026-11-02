@@ -9,5 +9,7 @@ Small scripts used while building Phase 4 and 5 to see pages render and to catch
 5. `node scripts/render-test/csv.mjs <scenario|none> <path>` fetches a route and prints the body (used for the CSV export).
 6. `node scripts/render-test/cdp.mjs <url> [cookie-json]` opens a page in headless Microsoft Edge over the DevTools protocol and prints Content-Security-Policy violations, console errors and whether React hydrated. Edge path is hard-coded at the top; change it if yours differs. The cookie JSON format is shown in how hit.mjs builds its session cookie.
 
+`hit.mjs`, `has.mjs` and `csv.mjs` talk to port 3123; set `PORT=3124` to point them at `npm run dev` instead.
+
 In git-bash on Windows, set `MSYS_NO_PATHCONV=1` or paths starting with `/` get rewritten.
 These are developer tools only; nothing here ships to the site.

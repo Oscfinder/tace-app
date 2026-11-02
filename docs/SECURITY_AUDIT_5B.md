@@ -184,3 +184,11 @@ The one action that had no explicit identity check was `markNotificationRead` (i
 | Wire rate limits into the contact and donation-receipt forms when they exist | Agent | When those forms are built |
 
 Residual risks accepted in this audit: the anonymous application-photo upload (section 4) and admin two-factor being **switched off for now** (`ADMIN_MFA_REQUIRED`, section 6) and, when on, enforced by the application rather than the database.
+
+## 10. Changes made after this audit (Ticket 5C)
+
+- **Fonts and stock photos are now served from our own server**, so the content security policy no longer allows `fontshare.com` or `unsplash.com` (less third-party exposure; no visitor address sent to them).
+- **New public endpoints:** `/api/health` (answers only ok or fail) and `/api/client-error` (accepts a digest, a path with ids removed and a scope; no error text; rate limited; validated; tested).
+- **Error tracking** is optional and server-side only; reports are scrubbed (see `lib/monitoring/scrub.ts`; a real report was inspected). Full errors stay in our own private server log.
+- **Database rules** (migration 017): one open mentor match per child, at most 5 open mentees per mentor, no negative amounts. `rls_audit` and `db_tests` still pass.
+- **Accepted nuance:** photos shown through `next/image` are resized and kept by the image optimiser for a few hours; a copy can only be fetched by someone who already holds the original one-hour signed link, so the one-hour rule still holds for access.

@@ -1,5 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { emailContext, sendEmail } from "@/lib/email/send";
+import type { RenderedEmail } from "@/lib/email/layout";
 
 // Notifications addressed to OTHER people (the mentor told that a guardian
 // accepted, the admins told that a request was declined, ...). Users have no
@@ -72,8 +74,8 @@ export async function matchParties(matchId: string) {
 // One unread notification per recipient per thread (or per type). If there is
 // already an unread one, do nothing, so a busy chat doesn't flood the bell.
 // The notification never contains message text.
-export async function notifyIfNoUnread(notice: Notice) {
-  if (!notice.profileId) return;
+export async function notifyIfNoUnread(notice: Notice): Promise<boolean> {
+  if (!notice.profileId) return false;
   const admin = createAdminClient();
   const { count } = await admin
     .from("notifications")
@@ -81,6 +83,28 @@ export async function notifyIfNoUnread(notice: Notice) {
     .eq("profile_id", notice.profileId)
     .eq("type", notice.type)
     .eq("is_read", false);
-  if ((count ?? 0) > 0) return;
+  if ((count ?? 0) > 0) return false;
   await notifyProfiles([notice]);
+  return true;
+}
+
+// Emails one person about something that already happened. Best-effort, like
+// the notification: a failed email must never undo or hide the real action.
+export async function emailProfile(
+  profileId: string,
+  build: (person: { fullName: string }, ctx: ReturnType<typeof emailContext>) => RenderedEmail,
+) {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("profiles")
+      .select("email, full_name")
+      .eq("id", profileId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (!data?.email) return;
+    await sendEmail({ to: data.email, ...build({ fullName: data.full_name }, emailContext()) });
+  } catch (err) {
+    console.error("emailProfile failed:", err instanceof Error ? err.message : "unknown");
+  }
 }

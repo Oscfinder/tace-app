@@ -5,7 +5,8 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEmail } from "@/lib/email/send";
+import { emailContext, sendEmail } from "@/lib/email/send";
+import * as emails from "@/lib/email/templates";
 import {
   applicationBase,
   sectionsFor,
@@ -48,16 +49,6 @@ async function clientIp(): Promise<string | null> {
     h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     h.get("x-real-ip")?.trim() ||
     (isProd ? null : "127.0.0.1") // local dev has no proxy headers
-  );
-}
-
-function escapeHtml(s: string) {
-  return s.replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ]!,
   );
 }
 
@@ -253,11 +244,10 @@ export async function submitApplication(input: {
     try {
       await sendEmail({
         to: contactEmail,
-        subject: `TACE Foundation — we received ${d.child_first_name}'s application`,
-        html: `<p>Thank you for applying to TACE Welfare Foundation.</p>
-<p>We have received the application for <strong>${escapeHtml(d.child_first_name)}</strong>. Your reference is <strong>${reference}</strong>.</p>
-<p>We will contact you within 7 days. Please keep this reference if you need to get in touch.</p>
-<p>Submitting an application does not guarantee support. Every application is carefully reviewed.</p>`,
+        ...emails.applicationReceived(emailContext(), {
+          childFirstName: d.child_first_name,
+          reference,
+        }),
       });
     } catch (err) {
       // The application is saved; a failed email must not look like a failed submission.

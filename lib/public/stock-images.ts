@@ -1,11 +1,12 @@
-// Decorative stock photography only — never used for real beneficiary photos.
+// Decorative stock photography only, never used for real beneficiary photos.
+// Kept in /public/images/stock (from Unsplash, free to use) so the landing page's
+// biggest image comes from our own server instead of another site.
 export const STOCK_IMAGES = {
-  hero: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1600&q=80",
-  journey:
-    "https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=600&q=80",
+  hero: "/images/stock/hero.jpg",
+  journey: "/images/stock/journey.jpg",
   stories: [
-    "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80",
-    "https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=600&q=80",
-    "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=600&q=80",
+    "/images/stock/story-1.jpg",
+    "/images/stock/journey.jpg",
+    "/images/stock/hero.jpg",
   ],
 } as const;

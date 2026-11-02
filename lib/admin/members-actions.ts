@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
 import { INVALID_REQUEST, memberAssignmentInput, announcementInput, uuid } from "@/lib/admin/schemas";
 import { logAudit } from "@/lib/admin/audit";
-import { sendEmail } from "@/lib/email/send";
-import { escapeHtml } from "@/lib/email/escape";
+import { emailContext, sendEmail } from "@/lib/email/send";
+import * as emails from "@/lib/email/templates";
 import { trusteeRoleSchema } from "@/lib/validations/auth";
 import type { Database } from "@/types/database";
 
@@ -63,9 +63,7 @@ export async function activateMember(input: Assignment): Promise<ActionResult> {
   try {
     await sendEmail({
       to: profile.email,
-      subject: "TACE Foundation — You're approved",
-      html: `<p>Hi ${escapeHtml(profile.full_name)},</p>
-<p>Your TACE Foundation membership has been approved. You can now sign in and access your member dashboard.</p>`,
+      ...emails.memberApproved(emailContext(), { name: profile.full_name }),
     });
   } catch (err) {
     console.error("Member approval email failed to send:", err);

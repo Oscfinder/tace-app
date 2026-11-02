@@ -15,6 +15,7 @@ import {
   Stat,
   formatDate,
 } from "@/components/member/ui";
+import Image from "next/image";
 
 const naira = new Intl.NumberFormat("en-NG", {
   style: "currency",
@@ -83,10 +84,12 @@ export default async function SponsorHomePage() {
                 className="flex flex-col gap-4 rounded-[18px] border border-m-line bg-white p-5 shadow-m-card transition-transform hover:-translate-y-0.5 sm:flex-row sm:items-center"
               >
                 {c.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={c.photoUrl}
                     alt={`${c.first_name}'s photo`}
+                    width={96}
+                    height={96}
+                    sizes="96px"
                     className="size-24 shrink-0 rounded-2xl object-cover ring-4 ring-[#e5f6ff]"
                   />
                 ) : (

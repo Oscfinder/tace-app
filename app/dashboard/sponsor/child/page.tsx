@@ -9,6 +9,7 @@ import {
   Pill,
 } from "@/components/member/ui";
 import { STAGE_LABELS } from "@/lib/beneficiary-stages";
+import Image from "next/image";
 
 export default async function SponsorChildPage() {
   const children = await getSponsorChildren();
@@ -40,10 +41,12 @@ export default async function SponsorChildPage() {
           <Card>
             <div className="flex items-center gap-4">
               {c.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={c.photoUrl}
                   alt={`${c.first_name}'s photo`}
+                  width={96}
+                  height={96}
+                  sizes="96px"
                   className="size-24 shrink-0 rounded-2xl object-cover ring-4 ring-[#e5f6ff]"
                 />
               ) : (

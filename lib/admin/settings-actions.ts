@@ -5,19 +5,14 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth/guards";
-import { sendEmail } from "@/lib/email/send";
+import { emailContext, sendEmail } from "@/lib/email/send";
+import * as emails from "@/lib/email/templates";
 import { getSiteUrl } from "@/lib/site-url";
 import { logAudit } from "@/lib/admin/audit";
 import { cleanupOrphanedApplicationPhotos } from "@/lib/storage/cleanup";
 import { SETTING_KEYS } from "@/lib/site-settings";
 
 type ActionResult = { error: string } | { success: true };
-
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
-  );
-}
 
 // Foundation details only. These are public, non-secret values: there is no
 // field for a key, token or password, and the table only accepts these keys.
@@ -130,14 +125,7 @@ export async function inviteAdmin(input: {
       : null;
     await sendEmail({
       to: email,
-      subject: "TACE Foundation — you have been added as an administrator",
-      html: `<p>Hi ${escapeHtml(fullName)},</p>
-<p>You have been added as an administrator of the TACE Foundation platform.</p>
-<p>${
-        actionLink
-          ? `<a href="${actionLink}">Set your password and sign in</a>.`
-          : `Go to <a href="${getSiteUrl()}/forgot-password">the sign-in page</a> and use "Forgot password" to set a password.`
-      }</p>`,
+      ...emails.adminInvited(emailContext(), { name: fullName, setPasswordLink: actionLink }),
     });
   } catch (err) {
     console.error("Admin invite email failed:", err);

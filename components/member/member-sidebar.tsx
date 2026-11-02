@@ -148,10 +148,12 @@ export function MemberSidebar({
             <DropdownMenu>
               <DropdownMenuTrigger className="flex min-h-11 w-full items-center gap-2.5 rounded-xl outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-m-blue2">
                 {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={avatarUrl}
                     alt=""
+                    width={39}
+                    height={39}
+                    sizes="39px"
                     className="size-[39px] shrink-0 rounded-[13px] object-cover"
                   />
                 ) : (

@@ -2,6 +2,7 @@ import { HeartHandshake } from "lucide-react";
 import { getCampaigns } from "@/lib/member/queries";
 import { ShareButton } from "@/components/member/share-button";
 import { Card, EmptyState, PageHeader, Pill } from "@/components/member/ui";
+import Image from "next/image";
 
 const naira = new Intl.NumberFormat("en-NG", {
   style: "currency",
@@ -83,12 +84,15 @@ export default async function CampaignsPage() {
                           className="overflow-hidden rounded-[14px] border border-m-line bg-white"
                         >
                           {child.photoUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={child.photoUrl}
-                              alt={`${child.first_name}, age ${child.age}`}
-                              className="aspect-square w-full object-cover"
-                            />
+                            <div className="relative aspect-square w-full">
+                              <Image
+                                src={child.photoUrl}
+                                alt={`${child.first_name}, age ${child.age}`}
+                                fill
+                                sizes="(min-width: 1024px) 200px, 45vw"
+                                className="object-cover"
+                              />
+                            </div>
                           ) : (
                             <div
                               className="aspect-square w-full bg-gradient-to-br from-[#e5f6ff] to-[#f0ebff]"

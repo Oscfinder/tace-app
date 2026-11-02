@@ -43,7 +43,7 @@ export function DonateSection() {
                 <div className="font-heading text-xl font-extrabold text-white">
                   {item.amount}
                 </div>
-                <div className="mt-1 text-xs leading-snug text-white/50">
+                <div className="mt-1 text-xs leading-snug text-white/65">
                   {item.label}
                 </div>
               </button>
@@ -59,7 +59,7 @@ export function DonateSection() {
         </div>
 
         <div className="rounded-[20px] border border-white/10 bg-white/[0.06] p-8">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-white/40">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-white/65">
             Foundation Bank Account
           </h3>
           <div className="mt-5 flex flex-col divide-y divide-white/[0.06]">
@@ -73,7 +73,7 @@ export function DonateSection() {
                 key={key}
                 className="flex items-center justify-between py-3.5"
               >
-                <span className="text-sm text-white/40">{key}</span>
+                <span className="text-sm text-white/65">{key}</span>
                 <span
                   className={cn(
                     "text-sm font-bold text-white",
@@ -85,7 +85,7 @@ export function DonateSection() {
               </div>
             ))}
           </div>
-          <p className="mt-5 text-center text-[13px] leading-relaxed text-white/40">
+          <p className="mt-5 text-center text-[13px] leading-relaxed text-white/65">
             After your transfer, send your receipt to{" "}
             <strong className="text-tace-yellow">
               tacefoundationinfo@gmail.com

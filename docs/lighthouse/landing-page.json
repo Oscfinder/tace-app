@@ -1,0 +1,161 @@
+{
+ "page": "landing page (/) served by a production build on the developer's PC against a stand-in database",
+ "note": "Lighthouse simulated throttling (mobile = slow 4G, 4x CPU slowdown). Scores vary run to run. Re-run against the live site after launch.",
+ "runs": [
+  {
+   "formFactor": "mobile",
+   "run": "before 5C fixes",
+   "fetchTime": "2026-11-02T16:43:39.348Z",
+   "lighthouse": "13.6.0",
+   "scores": {
+    "performance": 87,
+    "accessibility": 89,
+    "best-practices": 96,
+    "seo": 91
+   },
+   "metrics_ms": {
+    "firstContentfulPaint": 1225,
+    "largestContentfulPaint": 3898,
+    "totalBlockingTime": 73,
+    "cumulativeLayoutShift": 0.006,
+    "speedIndex": 2778
+   },
+   "failedAudits": [
+    "Largest Contentful Paint",
+    "Max Potential First Input Delay",
+    "Browser errors were logged to the console",
+    "Time to Interactive",
+    "Background and foreground colors do not have a sufficient contrast ratio.",
+    "Heading elements are not in a sequentially-descending order",
+    "Select elements do not have associated label elements.",
+    "Links do not have descriptive text",
+    "Page prevented back/forward cache restoration"
+   ]
+  },
+  {
+   "formFactor": "desktop",
+   "run": "before 5C fixes",
+   "fetchTime": "2026-11-02T16:45:02.717Z",
+   "lighthouse": "13.6.0",
+   "scores": {
+    "performance": 77,
+    "accessibility": 89,
+    "best-practices": 96,
+    "seo": 91
+   },
+   "metrics_ms": {
+    "firstContentfulPaint": 336,
+    "largestContentfulPaint": 1048,
+    "totalBlockingTime": 0,
+    "cumulativeLayoutShift": 0.493,
+    "speedIndex": 991
+   },
+   "failedAudits": [
+    "Cumulative Layout Shift",
+    "Browser errors were logged to the console",
+    "Background and foreground colors do not have a sufficient contrast ratio.",
+    "Heading elements are not in a sequentially-descending order",
+    "Select elements do not have associated label elements.",
+    "Links do not have descriptive text",
+    "Page prevented back/forward cache restoration"
+   ]
+  },
+  {
+   "formFactor": "mobile",
+   "run": "after, first visit after start (cold image cache)",
+   "fetchTime": "2026-11-02T17:07:56.963Z",
+   "lighthouse": "13.6.0",
+   "scores": {
+    "performance": 82,
+    "accessibility": 100,
+    "best-practices": 96,
+    "seo": 100
+   },
+   "metrics_ms": {
+    "firstContentfulPaint": 1223,
+    "largestContentfulPaint": 4437,
+    "totalBlockingTime": 172,
+    "cumulativeLayoutShift": 0.002,
+    "speedIndex": 2437
+   },
+   "failedAudits": [
+    "Largest Contentful Paint",
+    "Max Potential First Input Delay",
+    "Browser errors were logged to the console",
+    "Time to Interactive",
+    "Page prevented back/forward cache restoration"
+   ]
+  },
+  {
+   "formFactor": "mobile",
+   "run": "after, repeat visit (image cached)",
+   "fetchTime": "2026-11-02T17:08:14.983Z",
+   "lighthouse": "13.6.0",
+   "scores": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 96,
+    "seo": 100
+   },
+   "metrics_ms": {
+    "firstContentfulPaint": 1213,
+    "largestContentfulPaint": 1213,
+    "totalBlockingTime": 52,
+    "cumulativeLayoutShift": 0.002,
+    "speedIndex": 1213
+   },
+   "failedAudits": [
+    "Max Potential First Input Delay",
+    "Browser errors were logged to the console",
+    "Time to Interactive",
+    "Page prevented back/forward cache restoration"
+   ]
+  },
+  {
+   "formFactor": "desktop",
+   "run": "after, first run",
+   "fetchTime": "2026-11-02T17:08:32.204Z",
+   "lighthouse": "13.6.0",
+   "scores": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 96,
+    "seo": 100
+   },
+   "metrics_ms": {
+    "firstContentfulPaint": 347,
+    "largestContentfulPaint": 347,
+    "totalBlockingTime": 2,
+    "cumulativeLayoutShift": 0.0,
+    "speedIndex": 641
+   },
+   "failedAudits": [
+    "Browser errors were logged to the console",
+    "Page prevented back/forward cache restoration"
+   ]
+  },
+  {
+   "formFactor": "desktop",
+   "run": "after, second run",
+   "fetchTime": "2026-11-02T17:09:33.985Z",
+   "lighthouse": "13.6.0",
+   "scores": {
+    "performance": 99,
+    "accessibility": 100,
+    "best-practices": 96,
+    "seo": 100
+   },
+   "metrics_ms": {
+    "firstContentfulPaint": 339,
+    "largestContentfulPaint": 977,
+    "totalBlockingTime": 0,
+    "cumulativeLayoutShift": 0.0,
+    "speedIndex": 741
+   },
+   "failedAudits": [
+    "Browser errors were logged to the console",
+    "Page prevented back/forward cache restoration"
+   ]
+  }
+ ]
+}

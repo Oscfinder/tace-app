@@ -52,9 +52,9 @@ export function MentorshipSection() {
                   <step.icon className="size-5" />
                 </div>
                 <div>
-                  <h4 className="text-[15px] font-bold text-white">
+                  <h3 className="text-[15px] font-bold text-white">
                     {step.title}
-                  </h4>
+                  </h3>
                   <p className="mt-1 text-[13px] leading-relaxed text-white/60">
                     {step.description}
                   </p>
@@ -76,7 +76,7 @@ export function MentorshipSection() {
               variant="outline"
               className="border-white/50 bg-transparent text-white hover:bg-white/10"
             >
-              Learn More
+              Learn more about mentoring
             </Button>
           </div>
         </div>
@@ -91,10 +91,10 @@ export function MentorshipSection() {
                 <div className="flex size-12 items-center justify-center rounded-full bg-tace-blue text-lg font-bold text-white">
                   {mentor.initial}
                 </div>
-                <h4 className="mt-3 text-sm font-bold text-white">
+                <h3 className="mt-3 text-sm font-bold text-white">
                   {mentor.name}
-                </h4>
-                <p className="text-xs font-medium text-white/50">
+                </h3>
+                <p className="text-xs font-medium text-white/65">
                   {mentor.role}
                 </p>
                 <span className="mt-2 inline-block rounded-full bg-tace-blue/20 px-2.5 py-1 text-[11px] font-bold text-tace-blue">
@@ -107,10 +107,10 @@ export function MentorshipSection() {
             <div className="font-heading text-3xl font-extrabold text-tace-yellow">
               6 months
             </div>
-            <div className="mt-1 text-sm font-medium text-white/50">
+            <div className="mt-1 text-sm font-medium text-white/65">
               Minimum mentor commitment
             </div>
-            <div className="mt-2 text-[13px] font-medium text-white/40">
+            <div className="mt-2 text-[13px] font-medium text-white/65">
               1 check-in per month · Fully virtual
             </div>
           </div>

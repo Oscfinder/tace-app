@@ -3,9 +3,11 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireActive } from "@/lib/auth/guards";
+import * as emails from "@/lib/email/templates";
 import {
   adminProfileIds,
   matchParties,
+  emailProfile,
   notifyIfNoUnread,
   type Notice,
 } from "@/lib/notify";
@@ -109,7 +111,7 @@ export async function sendMessage(input: {
       const recipient =
         who.role === "mentor" ? parties.guardianProfileId : parties.mentorProfileId;
       if (recipient) {
-        await notifyIfNoUnread({
+        const created = await notifyIfNoUnread({
           profileId: recipient,
           type: `message:${input.matchId}`,
           title: "You have a new message",
@@ -118,6 +120,22 @@ export async function sendMessage(input: {
               ? `${parties.mentorName} sent a message.`
               : `${parties.childFirstName} sent a message.`,
         });
+        // Same throttle as the bell: one email per unread conversation, and it
+        // only says that a message exists, never what it says.
+        if (created) {
+          const senderFirstName =
+            who.role === "mentor" ? parties.mentorName.split(" ")[0] : parties.childFirstName;
+          await emailProfile(recipient, (person, ctx) =>
+            emails.newMessageNotice(ctx, {
+              recipientName: person.fullName,
+              senderFirstName,
+              messagesPath:
+                who.role === "mentor"
+                  ? "/dashboard/beneficiary/mentor/messages"
+                  : `/dashboard/mentor/messages/${input.matchId}`,
+            }),
+          );
+        }
       }
     } else {
       // A message that got past the app check and was held by the database:

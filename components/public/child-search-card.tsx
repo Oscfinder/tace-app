@@ -56,10 +56,14 @@ export function ChildSearchCard({
 
       <div className="flex flex-col gap-3">
         <div>
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-tace-gray">
+          <label
+            htmlFor="child-search-age"
+            className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-tace-gray"
+          >
             Age Range
           </label>
           <select
+            id="child-search-age"
             value={ageRange}
             onChange={(e) => setAgeRange(e.target.value)}
             className="w-full rounded-lg border border-[#E5E7EB] px-3.5 py-2.5 text-sm font-semibold text-tace-navy outline-none focus:border-tace-blue"
@@ -73,10 +77,14 @@ export function ChildSearchCard({
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-tace-gray">
+          <label
+            htmlFor="child-search-support"
+            className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-tace-gray"
+          >
             Support Needed
           </label>
           <select
+            id="child-search-support"
             value={support}
             onChange={(e) => setSupport(e.target.value)}
             className="w-full rounded-lg border border-[#E5E7EB] px-3.5 py-2.5 text-sm font-semibold text-tace-navy outline-none focus:border-tace-blue"

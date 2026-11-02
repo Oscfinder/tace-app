@@ -3,6 +3,7 @@ import { CalendarClock } from "lucide-react";
 import { STAGE_LABELS } from "@/lib/beneficiary-stages";
 import { Pill } from "@/components/member/ui";
 import type { Mentee } from "@/lib/mentor/queries";
+import Image from "next/image";
 
 // A mentee at a glance. Server-rendered (no icons are passed across the
 // server/client boundary).
@@ -13,10 +14,12 @@ export function MenteeCard({ mentee }: { mentee: Mentee }) {
       className="flex gap-4 rounded-[18px] border border-m-line bg-white p-4 shadow-m-card transition-transform hover:-translate-y-0.5"
     >
       {mentee.photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={mentee.photoUrl}
           alt={`${mentee.first_name}'s photo`}
+          width={80}
+          height={80}
+          sizes="80px"
           className="size-20 shrink-0 rounded-2xl object-cover ring-4 ring-[#e5f6ff]"
         />
       ) : (

@@ -138,13 +138,13 @@ export function EmpowermentJourney() {
               <div className="flex size-11 items-center justify-center rounded-xl bg-white/10 text-tace-yellow backdrop-blur-sm">
                 <stage.icon className="size-5" />
               </div>
-              <h4 className="mt-4 font-heading text-xl font-extrabold">
+              <h3 className="mt-4 font-heading text-xl font-extrabold">
                 {stage.title}
-              </h4>
+              </h3>
               <p className="mt-2 text-sm leading-relaxed text-white/70">
                 {stage.description}
               </p>
-              <div className="mt-5 text-xs font-semibold text-white/40">
+              <div className="mt-5 text-xs font-semibold text-white/65">
                 Stage {active + 1} of {STAGES.length}
               </div>
             </div>

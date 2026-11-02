@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { refreshPublicHome } from "@/lib/public/refresh";
 import { INVALID_REQUEST, activateSponsorInput, donationInput, uuid } from "@/lib/admin/schemas";
 import { logAudit } from "@/lib/admin/audit";
-import { sendEmail } from "@/lib/email/send";
-import { escapeHtml } from "@/lib/email/escape";
+import { emailContext, sendEmail } from "@/lib/email/send";
+import * as emails from "@/lib/email/templates";
 
 type ActionResult = { error: string } | { success: true };
 
@@ -53,9 +54,7 @@ export async function activateSponsor(input: {
   try {
     await sendEmail({
       to: profile.email,
-      subject: "TACE Foundation — You're approved",
-      html: `<p>Hi ${escapeHtml(profile.full_name)},</p>
-<p>Your TACE Foundation sponsorship has been approved and you've been linked to a child. You can now sign in to follow their progress.</p>`,
+      ...emails.sponsorApproved(emailContext(), { name: profile.full_name }),
     });
   } catch (err) {
     console.error("Sponsor approval email failed to send:", err);
@@ -161,6 +160,7 @@ export async function logDonation(input: {
       .eq("id", input.sponsorId);
   }
 
+  refreshPublicHome(); // the landing page shows the total given
   revalidatePath("/dashboard/admin/sponsors");
   if (input.sponsorId) {
     revalidatePath(`/dashboard/admin/sponsors/${input.sponsorId}`);
@@ -177,7 +177,7 @@ export async function sendDonationReceipt(
 
   const { data: donation } = await supabase
     .from("donations")
-    .select("donor_name, donor_email, amount, purpose, receipt_sent")
+    .select("donor_name, donor_email, amount, purpose, receipt_sent, created_at, bank_ref")
     .eq("id", donationId)
     .maybeSingle();
   if (!donation) return { error: "Donation not found." };
@@ -195,11 +195,17 @@ export async function sendDonationReceipt(
   try {
     await sendEmail({
       to: donation.donor_email,
-      subject: "TACE Foundation — Donation Receipt",
-      html: `<p>Hi ${escapeHtml(donation.donor_name)},</p>
-<p>Thank you for your donation of <strong>₦${Number(donation.amount).toLocaleString()}</strong>${
-        donation.purpose ? ` for ${escapeHtml(donation.purpose)}` : ""
-      }. This email serves as your receipt.</p>`,
+      ...emails.donationReceipt(emailContext(), {
+        donorName: donation.donor_name,
+        amountFormatted: `₦${Number(donation.amount).toLocaleString("en-NG")}`,
+        purpose: donation.purpose,
+        dateFormatted: new Date(donation.created_at ?? Date.now()).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+        bankRef: donation.bank_ref,
+      }),
     });
   } catch (err) {
     console.error("Receipt email failed to send:", err);

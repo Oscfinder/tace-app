@@ -14,6 +14,7 @@ import { STAGE_LABELS, stageProgress } from "@/lib/beneficiary-stages";
 import { STAGE_MESSAGES } from "@/lib/beneficiary/stages";
 import { MIN_AGE } from "@/lib/career/score";
 import { EmptyState, IconTile, Pill, formatDate } from "@/components/member/ui";
+import Image from "next/image";
 
 const LINKS = [
   { href: "/dashboard/beneficiary/journey", label: "My Journey", hint: "See how far you've come", icon: Route, accent: "blue" },
@@ -64,10 +65,12 @@ export default async function BeneficiaryHomePage() {
         </span>
         <div className="relative flex items-center gap-4">
           {me.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={me.photoUrl}
               alt={`${me.first_name}'s photo`}
+              width={96}
+              height={96}
+              sizes="96px"
               className="size-24 shrink-0 rounded-full object-cover ring-4 ring-white/40"
             />
           ) : (

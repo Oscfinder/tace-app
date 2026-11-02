@@ -18,7 +18,7 @@ const cookie = `sb-localhost-auth-token=base64-${Buffer.from(JSON.stringify(sess
 
 let bad = 0;
 for (const p of paths) {
-  const res = await fetch(`http://localhost:3123${p}`, { headers: { cookie }, redirect: "manual" });
+  const res = await fetch(`http://localhost:${process.env.PORT ?? 3123}${p}`, { headers: { cookie }, redirect: "manual" });
   const body = await res.text();
   const loc = res.headers.get("location");
   const errored = /Application error|server-side exception|Functions cannot be passed|Internal Server Error/i.test(body) || res.status >= 500;

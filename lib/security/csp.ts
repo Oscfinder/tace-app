@@ -7,11 +7,10 @@
 //               including one injected by an attacker.
 //  - styles:    'unsafe-inline' is needed because React writes style="..."
 //               attributes (these cannot carry a nonce). Script injection is
-//               what matters most and stays blocked. api.fontshare.com serves
-//               the display font's CSS.
-//  - fonts:     cdn.fontshare.com serves the font files; next/font self-hosts
-//               Quicksand and the dashboard fonts.
-//  - images:    our own site, Supabase Storage (photos), Unsplash (landing page),
+//               what matters most and stays blocked.
+//  - fonts:     all self-hosted (next/font), nothing from other sites.
+//  - images:    our own site (including the stock photos, which are kept in
+//               /public) and Supabase Storage (children's photos), plus
 //               data:/blob: for upload previews.
 //  - connect:   our own site and Supabase over https and wss (Realtime chat).
 //  - nothing may embed this site in a frame, and no plugins (object-src none).
@@ -40,9 +39,9 @@ export function buildCsp(nonce: string, isDev = process.env.NODE_ENV !== "produc
       // React uses eval in development only, for readable error stacks.
       ...(isDev ? ["'unsafe-eval'"] : []),
     ],
-    "style-src": ["'self'", "'unsafe-inline'", "https://api.fontshare.com"],
-    "img-src": ["'self'", "data:", "blob:", ...supabase.http, "https://images.unsplash.com"],
-    "font-src": ["'self'", "data:", "https://cdn.fontshare.com"],
+    "style-src": ["'self'", "'unsafe-inline'"],
+    "img-src": ["'self'", "data:", "blob:", ...supabase.http],
+    "font-src": ["'self'", "data:"],
     "connect-src": ["'self'", ...supabase.http, ...supabase.ws],
     "media-src": ["'self'"],
     "object-src": ["'none'"],

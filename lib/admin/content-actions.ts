@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/guards";
+import { refreshPublicHome } from "@/lib/public/refresh";
 import { INVALID_REQUEST, storyFields, announcementInput, idToggleInput, uuid, safeFileName } from "@/lib/admin/schemas";
 import { getStoryConsentWarning } from "@/lib/admin/content";
 
@@ -192,7 +193,7 @@ export async function toggleStoryPublish(input: {
 
   revalidatePath("/dashboard/admin/content/stories");
   revalidatePath(`/dashboard/admin/content/stories/${input.id}`);
-  revalidatePath("/");
+  refreshPublicHome();
   revalidatePath("/stories");
   return { success: true };
 }

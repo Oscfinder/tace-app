@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
-const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
-  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
+// Photos come from Supabase Storage (signed links), so next/image may fetch,
+// resize and cache them. The protocol and port follow the configured Supabase
+// URL, so local development against http://localhost works too.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL)
   : undefined;
 
 // Headers that never change between requests. The Content-Security-Policy is
@@ -38,20 +41,18 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
-      ...(supabaseHostname
+      ...(supabaseUrl
         ? [
             {
-              protocol: "https" as const,
-              hostname: supabaseHostname,
+              protocol: supabaseUrl.protocol.replace(":", "") as "http" | "https",
+              hostname: supabaseUrl.hostname,
+              ...(supabaseUrl.port ? { port: supabaseUrl.port } : {}),
               pathname: "/storage/v1/object/**",
             },
           ]
         : []),
-      {
-        protocol: "https" as const,
-        hostname: "images.unsplash.com",
-      },
     ],
   },
 };

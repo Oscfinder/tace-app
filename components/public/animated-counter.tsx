@@ -42,10 +42,20 @@ export function AnimatedCounter({
   }, [value, duration]);
 
   return (
-    <span ref={ref}>
-      {prefix}
-      {display.toLocaleString()}
-      {suffix}
+    // The final number is laid out invisibly in the same grid cell, so the box is
+    // its full width from the first paint and the page does not jump while the
+    // number counts up.
+    <span ref={ref} className="inline-grid justify-items-center tabular-nums">
+      <span aria-hidden className="invisible [grid-area:1/1]">
+        {prefix}
+        {value.toLocaleString()}
+        {suffix}
+      </span>
+      <span className="[grid-area:1/1]">
+        {prefix}
+        {display.toLocaleString()}
+        {suffix}
+      </span>
     </span>
   );
 }

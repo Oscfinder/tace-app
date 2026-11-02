@@ -9,6 +9,7 @@ import {
   formatDate,
   parsePage,
 } from "@/components/member/ui";
+import Image from "next/image";
 
 export default async function ImpactPage({
   searchParams,
@@ -33,12 +34,15 @@ export default async function ImpactPage({
               className="overflow-hidden rounded-[18px] border border-m-line bg-white shadow-m-card"
             >
               {s.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={s.photoUrl}
-                  alt=""
-                  className="aspect-[16/9] w-full object-cover"
-                />
+                <div className="relative aspect-[16/9] w-full">
+                  <Image
+                    src={s.photoUrl}
+                    alt=""
+                    fill
+                    sizes="(min-width: 1024px) 380px, (min-width: 640px) 45vw, 100vw"
+                    className="object-cover"
+                  />
+                </div>
               ) : (
                 <div
                   className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-[#e5f6ff] via-[#e4fbf4] to-[#f0ebff] text-[#079ce8]"

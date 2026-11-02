@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MAX_ACTIVE_MENTEES } from "@/lib/mentoring/constants";
+import { emailContext, sendEmail } from "@/lib/email/send";
+import * as emails from "@/lib/email/templates";
 import type { Database } from "@/types/database";
 
 type Client = SupabaseClient<Database>;
@@ -107,6 +109,42 @@ export async function createMatchCore(
   if (notices.length > 0) {
     const { error: notifyError } = await supabase.from("notifications").insert(notices);
     if (notifyError) console.error("Match notifications failed:", notifyError.message);
+  }
+
+  // Email both sides too (best-effort; first names only).
+  try {
+    const ctx = emailContext();
+    const [{ data: mentorLogin }, { data: familyLogin }] = await Promise.all([
+      mentor.profile_id
+        ? supabase.from("profiles").select("email, full_name").eq("id", mentor.profile_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      child?.profile_id
+        ? supabase.from("profiles").select("email, full_name").eq("id", child.profile_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    if (mentorLogin?.email) {
+      await sendEmail({
+        to: mentorLogin.email,
+        ...emails.mentorRequest(ctx, {
+          mentorName: mentorLogin.full_name,
+          childFirstName: child?.first_name ?? "A child",
+          dashboardPath: "/dashboard/mentor",
+        }),
+      });
+    }
+    if (familyLogin?.email) {
+      await sendEmail({
+        to: familyLogin.email,
+        ...emails.mentorSuggestedToFamily(ctx, {
+          name: familyLogin.full_name,
+          childFirstName: child?.first_name ?? "your child",
+          mentorName: mentorProfile?.full_name ?? "A mentor",
+          dashboardPath: "/dashboard/beneficiary/mentor",
+        }),
+      });
+    }
+  } catch (err) {
+    console.error("Match emails failed:", err instanceof Error ? err.message : "unknown");
   }
 
   return { success: true, matchId: match.id };

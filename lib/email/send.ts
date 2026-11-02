@@ -1,21 +1,28 @@
 import { Resend } from "resend";
+import type { RenderedEmail } from "./layout.ts";
+import { getSiteUrl } from "@/lib/site-url";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-// No verified sending domain configured yet — onboarding@resend.dev works
-// out of the box for testing. Swap for a verified TACE domain address once
-// one exists in the Resend dashboard.
-const FROM_ADDRESS = "TACE Foundation <onboarding@resend.dev>";
+// One sender address for everything. Until the foundation's domain is verified in
+// Resend, onboarding@resend.dev works for testing but can only reach the Resend
+// account's own address. Once the domain is verified, set EMAIL_FROM, for example
+//   EMAIL_FROM="TACE Foundation <no-reply@tacefoundation.org>"
+// See docs/EMAIL_SETUP.md.
+const FROM_ADDRESS = process.env.EMAIL_FROM || "TACE Foundation <onboarding@resend.dev>";
+// Where replies go. Leave unset for "do not reply".
+const REPLY_TO = process.env.EMAIL_REPLY_TO || undefined;
 
-export async function sendEmail(input: {
-  to: string;
-  subject: string;
-  html: string;
-}) {
+/** The context every template needs (the site address and the support email shown in the footer). */
+export function emailContext() {
+  return { siteUrl: getSiteUrl(), supportEmail: REPLY_TO };
+}
+
+export async function sendEmail(input: { to: string } & RenderedEmail) {
   if (!resend) {
-    console.log("[email stub — RESEND_API_KEY not set] Would send:", {
+    console.log("[email stub: RESEND_API_KEY not set] Would send:", {
       to: input.to,
       subject: input.subject,
     });
@@ -27,6 +34,8 @@ export async function sendEmail(input: {
     to: input.to,
     subject: input.subject,
     html: input.html,
+    text: input.text,
+    ...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
   });
 
   if (error) {
