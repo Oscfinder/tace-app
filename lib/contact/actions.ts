@@ -56,8 +56,12 @@ export async function sendContactMessage(
       replyTo: parsed.data.email,
       ...contactMessage(emailContext(), parsed.data),
     });
-    if (!result.stubbed && result.error) throw new Error("send failed");
-  } catch {
+    if (!result.stubbed && result.error) {
+      // Log why (type and text from the email service), never the visitor's message.
+      throw new Error(`${result.error.name}: ${result.error.message}`);
+    }
+  } catch (err) {
+    console.error("Contact form email failed:", err instanceof Error ? err.message : "unknown");
     return {
       ok: false,
       message: "We could not send your message just now. Please try again, or email us directly.",
