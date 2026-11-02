@@ -27,39 +27,8 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
-// One canonical address. In production, the "www" twin and every *.vercel.app
-// address redirect (308) to NEXT_PUBLIC_SITE_URL. Previews keep their own
-// addresses, and /api/cron is left alone so Vercel Cron is never redirected.
-// If the Vercel Domains page also redirects the canonical host elsewhere, the
-// two would loop: keep them pointing the same way.
-function canonicalRedirects() {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!raw || process.env.VERCEL_ENV !== "production") return [];
-  let host: string;
-  try {
-    host = new URL(raw).host;
-  } catch {
-    return [];
-  }
-  const twin = host.startsWith("www.") ? host.slice(4) : `www.${host}`;
-  const source = "/:path((?!api/cron).*)";
-  const destination = `${new URL(raw).origin}/:path`;
-  return [
-    { source, has: [{ type: "host" as const, value: twin }], destination, permanent: true },
-    {
-      source,
-      has: [{ type: "host" as const, value: "(?<sub>.+)\\.vercel\\.app" }],
-      destination,
-      permanent: true,
-    },
-  ];
-}
-
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  async redirects() {
-    return canonicalRedirects();
-  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

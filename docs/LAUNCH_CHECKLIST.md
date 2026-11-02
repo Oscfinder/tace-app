@@ -15,7 +15,7 @@ Ticket 5E (Go Live) completes this list: each item gets an owner and a tick box.
 - [x] `EMAIL_FROM` set in Vercel
 - [x] Supabase custom SMTP on (Resend) and the two auth email templates pasted
 - [x] Live signup confirmation email arrives and works; forgot-password works end to end
-- [ ] One canonical address: code redirect is written (www and `*.vercel.app` go to `NEXT_PUBLIC_SITE_URL`); after the next deploy, check in a browser that `www.tacefoundation.org` lands on `tacefoundation.org`, and that Vercel Domains does not redirect the apex to www (loop). Owner: Simon
+- [ ] One canonical address, configured in Vercel (Settings, Domains), not in the app: `tacefoundation.org` connected to Production and **not** redirecting to `www` (the apex must never redirect to www: it loops with the www redirect); `www.tacefoundation.org` redirects to `tacefoundation.org` (308); the `*.vercel.app` address redirects too. Then check in a private window that `www` lands on the bare domain with no "too many redirects" error. Owner: Simon
 - [ ] Confirm HTTPS is forced and no old address stays reachable without redirecting
 - [ ] DMARC record (`_dmarc` TXT) added and SPF/DKIM/DMARC checked as "pass" in a received message
 - [ ] Approval email and donation receipt tested on the live site
