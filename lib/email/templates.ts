@@ -287,6 +287,31 @@ export function resetPassword(ctx: Ctx, p: { link?: string } = {}) {
   );
 }
 
+export function weeklyDigest(
+  ctx: Ctx,
+  p: { openConcerns: number; flaggedMessages: number; pendingApplications: number },
+) {
+  const urgent = p.openConcerns + p.flaggedMessages > 0;
+  return done(
+    {
+      subject: urgent
+        ? "TACE Foundation: items need your review this week"
+        : "TACE Foundation: weekly summary, nothing urgent",
+      preheader: "Counts only. Sign in to see the details.",
+      heading: "Your weekly summary",
+      blocks: [
+        { kind: "p", text: "Here is where things stand on the platform. This email holds numbers only; the details are behind your sign-in." },
+        { kind: "p", text: `Open safeguarding concerns: **${p.openConcerns}**` },
+        { kind: "p", text: `Flagged messages: **${p.flaggedMessages}**` },
+        { kind: "p", text: `Applications waiting for a decision: **${p.pendingApplications}**` },
+        { kind: "button", label: "Open the admin dashboard", href: link(ctx, "/dashboard/admin") },
+        { kind: "note", text: "Please do not forward this email. Sent every Monday to the active administrators." },
+      ],
+    },
+    ctx,
+  );
+}
+
 // Sample data for the admin preview page and the tests.
 export function allSamples(ctx: Ctx): { key: string; label: string; email: RenderedEmail }[] {
   const link1 = "https://example.org/auth/confirm?token_hash=SAMPLE&type=recovery";
@@ -305,6 +330,7 @@ export function allSamples(ctx: Ctx): { key: string; label: string; email: Rende
     { key: "donationReceipt", label: "Donation receipt", email: donationReceipt(ctx, { donorName: "Kind Donor", amountFormatted: "₦50,000", purpose: "school fees", dateFormatted: "14 October 2026", bankRef: "TRF-83921" }) },
     { key: "newMessageNotice", label: "New message notice", email: newMessageNotice(ctx, { recipientName: "Mrs Obi", senderFirstName: "Mark", messagesPath: "/dashboard/beneficiary/mentor/messages" }) },
     { key: "mentorRequest", label: "Mentor request (to the mentor)", email: mentorRequest(ctx, { mentorName: "Mark Mentor", childFirstName: "Ada", dashboardPath: "/dashboard/mentor" }) },
+    { key: "weeklyDigest", label: "Weekly admin summary", email: weeklyDigest(ctx, { openConcerns: 2, flaggedMessages: 1, pendingApplications: 4 }) },
     { key: "mentorSuggestedToFamily", label: "Mentor suggested (to the family)", email: mentorSuggestedToFamily(ctx, { name: "Mrs Obi", childFirstName: "Ada", mentorName: "Mark Mentor", dashboardPath: "/dashboard/beneficiary/mentor" }) },
   ];
 }

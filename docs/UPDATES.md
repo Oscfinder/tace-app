@@ -1,5 +1,47 @@
 # TACE Platform — Updates Log
 
+## Nov 2, 2026 — Ticket 5E, code part: canonical redirect, test-data clean-up, weekly digest, runbook
+
+**For the next agent: the code and documents for 5E are written. What remains needs Simon's accounts (see "Still to do" below).**
+
+1. **One canonical address** (`next.config.ts`). In production only (`VERCEL_ENV=production`), the `www` twin of `NEXT_PUBLIC_SITE_URL` and every `*.vercel.app` host redirect (308) to `NEXT_PUBLIC_SITE_URL`, keeping path and query. `/api/cron` is excluded so Vercel Cron is never redirected. Previews are untouched. Checked on a production build with different Host headers: www and vercel.app redirect, the apex and localhost serve, cron answers 401 not a redirect. **Warning: in Vercel, Settings, Domains, the apex must NOT be set to redirect to www (that would loop). Whichever of apex/www `NEXT_PUBLIC_SITE_URL` names is the canonical one.**
+2. **`supabase/scripts/clear_test_data.sql`**: run by hand in the SQL editor if production reuses the test project. Dry-run by default (changes everything, prints counts, then fails on purpose so it rolls back); refuses to run unless a kept email is an active admin; deletes all app data and all accounts except `keep_emails`. Tested on an in-process Postgres: dry run changes nothing, real run leaves only the kept admin, the guard stops a wrong list. It cannot empty Storage; empty the buckets in the dashboard afterwards.
+3. **Weekly digest**: `/api/cron/weekly-digest`, Mondays 07:00 UTC (`vercel.json`), same `CRON_SECRET` check as the photo clean-up. Emails each active admin counts only (open or reviewing safeguarding concerns, flagged messages, pending or flagged applications). New email template `weeklyDigest` (16 templates now; appears in the dev preview).
+4. **`docs/RUNBOOK.md`**: outage and rollback, pause all matches in an emergency, suspend an account, lost admin 2FA, key rotation table, backups and the restore-test procedure, monitoring, who-to-call table to fill in.
+5. Tests: tsc clean, lint 0 errors, `npm test` all pass (17 unit, 213 db, 1,018 rls).
+
+### Still to do (needs Simon)
+- Run migration 017 (and check 013 to 016) in Supabase; set `IP_HASH_SALT` and `CRON_SECRET` in Vercel (the digest and clean-up do nothing without `CRON_SECRET`). Add a `_dmarc` DNS record.
+- Decide: separate production Supabase project (preferred) or run the clean-up script. Create the real admin accounts (two), then set `ADMIN_MFA_REQUIRED=true`.
+- Sentry account and alert; uptime monitor on `/api/health` and an alert test; backups on a paid Supabase plan and one restore test; fill the who-to-call table.
+- Rotate the exposed GitHub token and any pasted keys; Google OAuth for the live domain; legal trustee review of the legal pages and `docs/DATA_PROTECTION.md`; the missing public pages.
+- Previews must point at the test project, never production data (Vercel env vars per environment).
+- Not pushed yet.
+
+## Nov 2, 2026 — Launch setup done by Simon: domain, email and Supabase auth (part of Ticket 5E)
+
+**For the next agent: this was done by hand in Simon's accounts and is recorded from Simon's report; nothing here was checked by the agent. 5D has not started. Remaining 5E items are listed below and ticked/unticked in `docs/LAUNCH_CHECKLIST.md`.**
+
+### Done (reported by Simon)
+1. Bought `tacefoundation.org` and added it to Vercel; Vercel shows it as valid.
+2. `NEXT_PUBLIC_SITE_URL=https://tacefoundation.org` set in Vercel and redeployed.
+3. Supabase, Authentication, URL Configuration: Site URL `https://tacefoundation.org`; `/auth/callback` and `/auth/confirm` added to the redirect URLs.
+4. Resend: `tacefoundation.org` added and verified (DKIM and SPF verified, sending on, receiving off).
+5. Vercel: `EMAIL_FROM` = `TACE Welfare Foundation <no-reply@tacefoundation.org>`.
+6. Supabase custom SMTP on, through Resend (`smtp.resend.com`, port 465, username `resend`, sender `no-reply@tacefoundation.org`). The first attempt failed with "Error sending confirmation email" until the Resend API key was re-created and pasted again.
+7. Confirm-signup and reset-password templates from `docs/email-templates/` pasted into Supabase.
+8. Live tests: a new member signup (confirmation email arrived, link worked, landed on `/pending`) and forgot-password (works end to end).
+
+### Not done or still open
+- **Canonical address.** The site opens on `www.tacefoundation.org`. Pick one address, redirect the other (and the `*.vercel.app` address) to it, and add the `www` URLs to the Supabase redirect list if both stay live. Not yet checked by the agent.
+- **Google sign-in** skipped: the live domain is not yet in the Google OAuth origins and redirect URLs.
+- **Admin 2FA** still off (`ADMIN_MFA_REQUIRED` unset); required before launch.
+- **Migration 017** may not have been run in Supabase; check (013 to 016 too).
+- **Public pages** `/stories`, `/programmes`, `/about`, `/contact`, `/privacy`, `/terms`, `/child-protection-policy` still return 404 (and `/sponsor`).
+- **Test accounts and test data** remain in the database; the clean-up in 5E deliverable 1 is still to do.
+- Not yet tested on the live domain: the application-approval email, donation receipt, and SPF/DKIM/DMARC "pass" headers. A DMARC record was not mentioned; add `_dmarc` as in `docs/EMAIL_SETUP.md`.
+- Still open from 5E: `IP_HASH_SALT` and `CRON_SECRET` in Vercel, error tracking and uptime alerts, backups and restore test, `docs/RUNBOOK.md`, real admin accounts, key rotation, soft launch plan.
+
 ## Nov 2, 2026 — Ticket 5C: Performance, errors & email (code done; the real-inbox and live-site checks wait for the domain)
 
 **For the next agent: 5A, 5B and 5C are built. Start at Ticket 5D in `docs/PHASE_5.md`. Read `docs/EMAIL_SETUP.md` too.**
