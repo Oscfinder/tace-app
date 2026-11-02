@@ -1,5 +1,16 @@
 # TACE Platform — Updates Log
 
+## Nov 2, 2026 — Scheduled jobs move from Vercel Cron to cPanel cron
+
+**For the next agent: the two cron routes are unchanged in behaviour; `vercel.json` is deleted; `docs/CRON_SETUP.md` has the ready-to-paste cPanel commands. Not pushed yet. After the push, Simon creates the two jobs in cPanel with the real secret.**
+
+- **Routes** (both GET, same check): `/api/cron/cleanup-photos` and `/api/cron/weekly-digest`. Each accepts only `Authorization: Bearer <CRON_SECRET>` (constant-time compare) and answers 401 to everything else, including a missing header, a wrong secret, the secret without `Bearer`, the secret in the URL query string (never read), and an unset `CRON_SECRET`. POST gets 405.
+- **`vercel.json` deleted** (it held only `crons`), so the jobs cannot run twice.
+- **Logging:** each run writes one line: `[cron] <job> ok { at, ...counts }` (clean-up: scanned, deleted; digest: the three counts and how many emails were sent), `[cron] <job> refused: missing or wrong secret` for a refused call, or `[cron] <job> failed { at, error }`. No names, emails or message text. Search the Vercel logs for `[cron]` to confirm cPanel is calling.
+- **`docs/CRON_SETUP.md`:** what each job does, schedules (clean-up daily 03:00; digest Mondays 07:00), the cPanel commands with the `YOUR_CRON_SECRET` placeholder and `https://www.tacefoundation.org` (curl does not follow redirects, so the command must use the address that serves the site directly), the cPanel steps, the server-time-zone note (Lagos is UTC+1), a one-time test command (tests the clean-up, not the digest, because the digest emails the admins), and how to change the secret. `docs/LAUNCH_CHECKLIST.md`, `docs/RUNBOOK.md` and `.env.example` updated to match. The real secret appears nowhere in the repo.
+- **Tested** on a production build: all four refusal cases return 401 on both routes; POST returns 405; the correct secret returns 200 on both and writes the `ok` line. That run used the real Supabase project (the address is fixed at build time), with the Resend key blanked so the digest only logged "would send" and no email went out; the clean-up found nothing to delete. The failure (500) path was not exercised. tsc, lint (0 errors), 17 unit tests and the build pass (one build attempt failed on a Google Fonts fetch and passed on retry).
+- **Reminder:** `CRON_SECRET` must still be set in Vercel (the routes read it there) and be identical to the value in the cPanel commands.
+
 ## Nov 2, 2026 — Public pages built (the 404s are gone): about, programmes, stories, contact, sponsor, privacy, terms, child protection
 
 **For the next agent: every link in the navbar and footer now resolves. Legal pages are DRAFTS pending the legal trustee (each shows a notice, `DraftNotice` in `components/public/page-shell.tsx`; delete those lines after sign-off).**

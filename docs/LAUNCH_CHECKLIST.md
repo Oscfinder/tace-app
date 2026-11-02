@@ -24,11 +24,11 @@ Ticket 5E (Go Live) completes this list: each item gets an owner and a tick box.
 
 ## To be completed in Ticket 5E
 
-(See `docs/PHASE_5.md`, Ticket 5E, deliverable 7: legal pages reviewed by the legal trustee, real bank details in Settings, real content and photos with consent, privacy notices live, a test application end to end on production, a rollback plan, a support email that someone reads. Also: `IP_HASH_SALT` and `CRON_SECRET` set in Vercel; production Supabase project separate from testing; the exposed GitHub token and any pasted API keys rotated; a paid Gemini plan whose terms say data is not used for training; `docs/DATA_PROTECTION.md` reviewed by the legal trustee.)
+(See `docs/PHASE_5.md`, Ticket 5E, deliverable 7: legal pages reviewed by the legal trustee, real bank details in Settings, real content and photos with consent, privacy notices live, a test application end to end on production, a rollback plan, a support email that someone reads. Also: `IP_HASH_SALT` and `CRON_SECRET` set in Vercel and the cPanel cron jobs created; production Supabase project separate from testing; the exposed GitHub token and any pasted API keys rotated; a paid Gemini plan whose terms say data is not used for training; `docs/DATA_PROTECTION.md` reviewed by the legal trustee.)
 
 ## Added with the 5E code (Nov 2, 2026)
 
-- [ ] `CRON_SECRET` set in Vercel (the nightly photo clean-up and Monday digest both refuse to run without it). Owner: Simon
+- [ ] `CRON_SECRET` set in Vercel (both cron routes refuse to run without it), and **cPanel cron jobs created and tested** per `docs/CRON_SETUP.md` (daily photo clean-up, Monday digest; check each shows its `[cron] ... ok` line in the Vercel logs). Owner: Simon
 - [ ] Test data removed: new production project, or `supabase/scripts/clear_test_data.sql` run and Storage buckets emptied; counts shown. Owner: Simon
 - [ ] Restore test done and logged in `docs/RUNBOOK.md`; Supabase plan does not pause. Owner: Simon
 - [ ] Uptime monitor on `/api/health` with an alert, tested by making it fail. Owner: Simon

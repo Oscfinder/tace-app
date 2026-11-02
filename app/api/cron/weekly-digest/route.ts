@@ -4,8 +4,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { emailContext, sendEmail } from "@/lib/email/send";
 import { weeklyDigest } from "@/lib/email/templates";
 
-// Called every Monday by Vercel Cron (see vercel.json) with
-// "Authorization: Bearer <CRON_SECRET>". Emails each active admin a count of
+// Called every Monday by a cPanel cron job (docs/CRON_SETUP.md) with
+// "Authorization: Bearer <CRON_SECRET>" (header only, never in the URL; anything
+// else is refused with 401). Emails each active admin a count of
 // open safeguarding concerns, flagged messages and waiting applications.
 // Numbers only: no names, no message text.
 export async function GET(request: NextRequest) {
@@ -16,7 +17,10 @@ export async function GET(request: NextRequest) {
     !!secret &&
     given.length === expected.length &&
     timingSafeEqual(Buffer.from(given), Buffer.from(expected));
-  if (!ok) return new NextResponse("Unauthorised", { status: 401 });
+  if (!ok) {
+    console.warn("[cron] weekly-digest refused: missing or wrong secret");
+    return new NextResponse("Unauthorised", { status: 401 });
+  }
 
   try {
     const db = createAdminClient();
@@ -50,10 +54,10 @@ export async function GET(request: NextRequest) {
       }
     }
     const result = { openConcerns, flaggedMessages, pendingApplications, sent };
-    console.log("Weekly digest:", result);
+    console.log("[cron] weekly-digest ok", { at: new Date().toISOString(), ...result });
     return NextResponse.json(result);
   } catch (err) {
-    console.error("Weekly digest failed:", err instanceof Error ? err.message : "unknown");
+    console.error("[cron] weekly-digest failed", { at: new Date().toISOString(), error: err instanceof Error ? err.message : "unknown" });
     return NextResponse.json({ error: "Digest failed." }, { status: 500 });
   }
 }

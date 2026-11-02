@@ -43,7 +43,7 @@ After changing any value in Vercel, **redeploy** (Deployments, latest, **Redeplo
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | same page, publishable key | update Vercel, redeploy |
 | `RESEND_API_KEY` | Resend, **API Keys**, create, then delete the old one | update Vercel; also Supabase, **Authentication**, **SMTP**, password (a separate key is recommended) |
 | `GEMINI_API_KEY` | Google AI Studio / Cloud, create new, delete old | update Vercel |
-| `CRON_SECRET` | any new long random string (at least 32 characters) | update Vercel, redeploy |
+| `CRON_SECRET` | any new long random string (at least 32 characters) | update Vercel, redeploy, **and** edit both cPanel cron commands (`docs/CRON_SETUP.md`) |
 | `IP_HASH_SALT` | any new long random string | update Vercel. Rate-limit history resets; that is fine |
 | `SENTRY_DSN` | Sentry, project settings, client keys | update Vercel |
 | GitHub access token | GitHub, Settings, Developer settings, tokens: revoke, create new | update wherever it is used |
@@ -76,8 +76,8 @@ If production is the same Supabase project used for testing, run `supabase/scrip
 
 - **Errors:** Sentry (set `SENTRY_DSN`), with an alert rule emailing the foundation's address on any new error.
 - **Uptime:** an external monitor (for example UptimeRobot, free) checking `https://tacefoundation.org/api/health` every 5 minutes and emailing on failure. To test it, temporarily make the check fail (point the monitor at a wrong keyword) and confirm the email arrives.
-- **Weekly digest:** every Monday 07:00 UTC the admins get an email with counts of open safeguarding concerns, flagged messages and waiting applications (cron `/api/cron/weekly-digest`, needs `CRON_SECRET`).
-- **Daily:** orphaned application photos are cleaned up at 03:00 UTC.
+- **Weekly digest:** every Monday 07:00 UTC the admins get an email with counts of open safeguarding concerns, flagged messages and waiting applications (called by a cPanel cron job, see `docs/CRON_SETUP.md`; needs `CRON_SECRET`).
+- **Daily:** orphaned application photos are cleaned up at 03:00 (cPanel server time, see `docs/CRON_SETUP.md`). If a job stops, search the Vercel logs for `[cron]`: no line means cPanel is not calling it.
 
 ## Who to call
 
