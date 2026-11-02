@@ -1,5 +1,16 @@
 # TACE Platform — Updates Log
 
+## Nov 2, 2026 — Public pages built (the 404s are gone): about, programmes, stories, contact, sponsor, privacy, terms, child protection
+
+**For the next agent: every link in the navbar and footer now resolves. Legal pages are DRAFTS pending the legal trustee (each shows a notice, `DraftNotice` in `components/public/page-shell.tsx`; delete those lines after sign-off).**
+
+- `/about`, `/programmes` (six programmes), `/stories` and `/stories/[id]` (published only, read as a visitor so row-level security decides; story text rendered as escaped paragraphs), `/sponsor` (how it works + the same consented children as the home page) and `/sponsor/[id]` (shows a child only if they are in that shared public list; any other id gives "not found", revealing nothing), `/contact`, `/privacy`, `/terms`, `/child-protection-policy`. Shared frame: `components/public/page-shell.tsx`.
+- **Contact form** (`lib/contact/actions.ts`, `components/public/contact-form.tsx`): validated with Zod, rate limited with `LIMITS.contactIp`, hidden bot field, emailed to Admin > Settings "contact email" (fallback `tacefoundationinfo@gmail.com`) with the visitor as reply-to; nothing stored. New email template `contactMessage` (17 templates). `sendEmail` accepts `replyTo`. **Not tested end to end** (the local `.env.local` holds a real Resend key, so submitting would send a real email): send one test message from the live site.
+- **Privacy page** includes the required sentence about the career quiz and Google's AI service (DATA_PROTECTION.md 7.1). The text follows `docs/DATA_PROTECTION.md`; keep them in step. Retention is described in general words only because the trustees have not set periods yet (DATA_PROTECTION.md section 5).
+- **Terms and child protection** were written for this platform's real behaviour (vetting, two consents, monitored messaging, contact details blocked, pause/suspend, concerns raised from dashboards). **A named safeguarding lead is not published** because none was decided; add one. The policy gives 112 as Nigeria's emergency number.
+- Checked: tsc, lint, unit tests, production build; all eight pages return 200 with the right heading, and none scrolls sideways at 360px. A missing story/child id shows the friendly "not found" screen but with HTTP 200 (a streamed page cannot change its status, same as noted before).
+- Not done: no sitemap or robots file; no real About content beyond what the PRD and footer state (no founding story, team or trustee names, since those need the trustees' consent and wording); Lighthouse and axe on the new pages belong to 5D.
+
 ## Nov 2, 2026 — Ticket 5E, code part: canonical redirect, test-data clean-up, weekly digest, runbook
 
 **For the next agent: the code and documents for 5E are written. What remains needs Simon's accounts (see "Still to do" below).**

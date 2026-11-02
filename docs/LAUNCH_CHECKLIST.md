@@ -34,3 +34,7 @@ Ticket 5E (Go Live) completes this list: each item gets an owner and a tick box.
 - [ ] Uptime monitor on `/api/health` with an alert, tested by making it fail. Owner: Simon
 - [ ] Sentry live with an email alert. Owner: Simon
 - [ ] Who-to-call table in `docs/RUNBOOK.md` filled in and a printed copy kept. Owner: trustees
+- [ ] Legal trustee signs off `/privacy`, `/terms`, `/child-protection-policy` and `docs/DATA_PROTECTION.md`; then remove the `DraftNotice` lines from the three pages. Owner: legal trustee
+- [ ] Name the safeguarding lead on the child protection page, and choose retention periods (DATA_PROTECTION.md section 5) so the privacy page can state them. Owner: trustees
+- [ ] Real About content (founding story, trustees' names only with their consent) and real programme details checked by the programme lead. Owner: trustees
+- [ ] Send one test message through `/contact` on the live site and confirm it reaches the contact inbox and that Reply goes to the sender. Owner: Simon

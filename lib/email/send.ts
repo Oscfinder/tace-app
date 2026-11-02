@@ -20,7 +20,7 @@ export function emailContext() {
   return { siteUrl: getSiteUrl(), supportEmail: REPLY_TO };
 }
 
-export async function sendEmail(input: { to: string } & RenderedEmail) {
+export async function sendEmail(input: { to: string; replyTo?: string } & RenderedEmail) {
   if (!resend) {
     console.log("[email stub: RESEND_API_KEY not set] Would send:", {
       to: input.to,
@@ -35,7 +35,7 @@ export async function sendEmail(input: { to: string } & RenderedEmail) {
     subject: input.subject,
     html: input.html,
     text: input.text,
-    ...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
+    ...(input.replyTo || REPLY_TO ? { replyTo: input.replyTo || REPLY_TO } : {}),
   });
 
   if (error) {

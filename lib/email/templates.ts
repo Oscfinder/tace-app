@@ -287,6 +287,23 @@ export function resetPassword(ctx: Ctx, p: { link?: string } = {}) {
   );
 }
 
+// Goes to the foundation (not to the public) when someone uses the contact form.
+export function contactMessage(ctx: Ctx, p: { name: string; email: string; message: string }) {
+  return done(
+    {
+      subject: `TACE Foundation website: message from ${p.name.slice(0, 60)}`,
+      preheader: "Someone wrote to you through the contact form.",
+      heading: "New message from the website",
+      blocks: [
+        { kind: "p", text: `From: ${p.name} (${p.email})` },
+        { kind: "p", text: p.message },
+        { kind: "note", text: "Reply to this email to answer them. It was sent through the public contact form, so treat links and attachments with care." },
+      ],
+    },
+    ctx,
+  );
+}
+
 export function weeklyDigest(
   ctx: Ctx,
   p: { openConcerns: number; flaggedMessages: number; pendingApplications: number },
@@ -330,6 +347,7 @@ export function allSamples(ctx: Ctx): { key: string; label: string; email: Rende
     { key: "donationReceipt", label: "Donation receipt", email: donationReceipt(ctx, { donorName: "Kind Donor", amountFormatted: "₦50,000", purpose: "school fees", dateFormatted: "14 October 2026", bankRef: "TRF-83921" }) },
     { key: "newMessageNotice", label: "New message notice", email: newMessageNotice(ctx, { recipientName: "Mrs Obi", senderFirstName: "Mark", messagesPath: "/dashboard/beneficiary/mentor/messages" }) },
     { key: "mentorRequest", label: "Mentor request (to the mentor)", email: mentorRequest(ctx, { mentorName: "Mark Mentor", childFirstName: "Ada", dashboardPath: "/dashboard/mentor" }) },
+    { key: "contactMessage", label: "Contact form message (to the foundation)", email: contactMessage(ctx, { name: "Visitor Name", email: "visitor@example.org", message: "Hello, I would like to know how to volunteer." }) },
     { key: "weeklyDigest", label: "Weekly admin summary", email: weeklyDigest(ctx, { openConcerns: 2, flaggedMessages: 1, pendingApplications: 4 }) },
     { key: "mentorSuggestedToFamily", label: "Mentor suggested (to the family)", email: mentorSuggestedToFamily(ctx, { name: "Mrs Obi", childFirstName: "Ada", mentorName: "Mark Mentor", dashboardPath: "/dashboard/beneficiary/mentor" }) },
   ];

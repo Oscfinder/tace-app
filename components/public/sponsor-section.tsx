@@ -13,7 +13,7 @@ export type FeaturedBeneficiary = {
   photoUrl: string | null;
 };
 
-function ChildCard({ child }: { child: FeaturedBeneficiary }) {
+export function ChildCard({ child }: { child: FeaturedBeneficiary }) {
   const progress = stageProgress(child.current_stage);
   const need = child.support_needed?.[0] ?? "General support";
 
