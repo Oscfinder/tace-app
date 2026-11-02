@@ -50,7 +50,7 @@ Redeploy afterwards. Until `EMAIL_FROM` is set the app uses Resend's test addres
    - **Confirm signup**: subject from `confirm-signup.subject.txt`, body from `confirm-signup.html`
    - **Reset password**: subject from `reset-password.subject.txt`, body from `reset-password.html`
    These contain Supabase's own placeholders (`{{ .SiteURL }}`, `{{ .TokenHash }}`) and link to the site's `/auth/confirm` page. Do not edit those parts. Supabase only sends the HTML for these two; it has no field for a plain-text version.
-4. In **Authentication, URL Configuration**, set **Site URL** to the live address (for example `https://tacefoundation.org`) and add `https://tacefoundation.org/auth/confirm` and `https://tacefoundation.org/auth/callback` to the redirect URLs. Turn **Confirm email** on.
+4. In **Authentication, URL Configuration**, set **Site URL** to the live address (`https://www.tacefoundation.org`, the canonical one) and add `https://www.tacefoundation.org/auth/confirm` and `https://www.tacefoundation.org/auth/callback` to the redirect URLs. Turn **Confirm email** on.
 5. If you ever change the two templates in the code, regenerate the files with `node scripts/generate-auth-email-templates.mjs` and paste them again.
 
 ## 5. Test it (do this before launch, and write down the results)

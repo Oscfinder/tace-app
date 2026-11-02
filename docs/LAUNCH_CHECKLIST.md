@@ -9,13 +9,13 @@ Ticket 5E (Go Live) completes this list: each item gets an owner and a tick box.
 ## Domain, email and auth (Nov 2, 2026; reported by Simon, not re-checked by the agent)
 
 - [x] Domain `tacefoundation.org` bought and added to Vercel (shows valid). Owner: Simon
-- [x] `NEXT_PUBLIC_SITE_URL` = `https://tacefoundation.org` in Vercel, redeployed
-- [x] Supabase Site URL and redirect URLs (`/auth/callback`, `/auth/confirm`) set
+- [x] `NEXT_PUBLIC_SITE_URL` = `https://www.tacefoundation.org` in Vercel, redeployed (canonical address is **www**; the bare domain redirects to it, intended)
+- [x] Supabase Site URL (`https://www.tacefoundation.org`) and redirect URLs (`/auth/callback`, `/auth/confirm`) set
 - [x] Resend domain verified (DKIM, SPF)
 - [x] `EMAIL_FROM` set in Vercel
 - [x] Supabase custom SMTP on (Resend) and the two auth email templates pasted
 - [x] Live signup confirmation email arrives and works; forgot-password works end to end
-- [ ] One canonical address, configured in Vercel (Settings, Domains), not in the app: `tacefoundation.org` connected to Production and **not** redirecting to `www` (the apex must never redirect to www: it loops with the www redirect); `www.tacefoundation.org` redirects to `tacefoundation.org` (308); the `*.vercel.app` address redirects too. Then check in a private window that `www` lands on the bare domain with no "too many redirects" error. Owner: Simon
+- [x] One canonical address: `https://www.tacefoundation.org`, configured in Vercel (Settings, Domains), not in the app. The bare domain redirects to it by design. Settled by Simon; not re-checked by the agent. Owner: Simon
 - [ ] Confirm HTTPS is forced and no old address stays reachable without redirecting
 - [ ] DMARC record (`_dmarc` TXT) added and SPF/DKIM/DMARC checked as "pass" in a received message
 - [ ] Approval email and donation receipt tested on the live site

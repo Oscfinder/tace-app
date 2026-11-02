@@ -22,11 +22,11 @@
 - Checked: tsc, lint, unit tests, production build; all eight pages return 200 with the right heading, and none scrolls sideways at 360px. A missing story/child id shows the friendly "not found" screen but with HTTP 200 (a streamed page cannot change its status, same as noted before).
 - Not done: no sitemap or robots file; no real About content beyond what the PRD and footer state (no founding story, team or trustee names, since those need the trustees' consent and wording); Lighthouse and axe on the new pages belong to 5D.
 
-## Nov 2, 2026 — Ticket 5E, code part: test-data clean-up, weekly digest, runbook (canonical redirect lives in Vercel)
+## Nov 2, 2026 — Ticket 5E, code part: test-data clean-up, weekly digest, runbook (canonical address is www, set in Vercel)
 
 **For the next agent: the code and documents for 5E are written. What remains needs Simon's accounts (see "Still to do" below).**
 
-1. **One canonical address is set in Vercel, not in the code.** The app does no host redirects (`next.config.ts` has none). A code redirect from `www` to the bare domain was added and pushed, and it looped with Vercel's own Domains redirect (the bare domain was redirecting to `www`): visitors saw "redirected you too many times". It was removed. **In Vercel, Settings, Domains: `tacefoundation.org` must be connected to Production and must NOT redirect to `www`; `www.tacefoundation.org` is set to redirect to `tacefoundation.org` (308). Redirect the `*.vercel.app` address there too if wanted.** `NEXT_PUBLIC_SITE_URL` and the Supabase URLs name the bare domain, so that is the canonical one.
+1. **Canonical address: `https://www.tacefoundation.org`, set in Vercel (Settings, Domains), not in the code.** The app does no host redirects (`next.config.ts` has none). A code redirect from `www` to the bare domain was added and pushed, and it looped with Vercel's own redirect: visitors saw "redirected you too many times". It was removed. **Simon settled it: `www` is canonical, the bare domain redirects to `www` on purpose, and `NEXT_PUBLIC_SITE_URL` and the Supabase Site URL both use `https://www.tacefoundation.org`.** Do not add host redirects to the app, and do not re-check or change them.
 2. **`supabase/scripts/clear_test_data.sql`**: run by hand in the SQL editor if production reuses the test project. Dry-run by default (changes everything, prints counts, then fails on purpose so it rolls back); refuses to run unless a kept email is an active admin; deletes all app data and all accounts except `keep_emails`. Tested on an in-process Postgres: dry run changes nothing, real run leaves only the kept admin, the guard stops a wrong list. It cannot empty Storage; empty the buckets in the dashboard afterwards.
 3. **Weekly digest**: `/api/cron/weekly-digest`, Mondays 07:00 UTC (`vercel.json`), same `CRON_SECRET` check as the photo clean-up. Emails each active admin counts only (open or reviewing safeguarding concerns, flagged messages, pending or flagged applications). New email template `weeklyDigest` (16 templates now; appears in the dev preview).
 4. **`docs/RUNBOOK.md`**: outage and rollback, pause all matches in an emergency, suspend an account, lost admin 2FA, key rotation table, backups and the restore-test procedure, monitoring, who-to-call table to fill in.
@@ -55,7 +55,7 @@
 8. Live tests: a new member signup (confirmation email arrived, link worked, landed on `/pending`) and forgot-password (works end to end).
 
 ### Not done or still open
-- **Canonical address.** Was reported as opening on `www.tacefoundation.org`. Now handled in Vercel Domains (see the 5E code entry above), not in code. Not yet checked by the agent.
+- **Canonical address.** Settled later: `www` is canonical (see the 5E code entry above).
 - **Google sign-in** skipped: the live domain is not yet in the Google OAuth origins and redirect URLs.
 - **Admin 2FA** still off (`ADMIN_MFA_REQUIRED` unset); required before launch.
 - **Migration 017** may not have been run in Supabase; check (013 to 016 too).

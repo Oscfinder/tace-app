@@ -4,7 +4,7 @@ What to do when something goes wrong, written so a trustee who is not a develope
 
 ## 1. The site is down or showing errors
 
-1. Open `https://tacefoundation.org/api/health`. `{"status":"ok"}` means the website and database are answering. `{"status":"fail"}` or no answer means they are not.
+1. Open `https://www.tacefoundation.org/api/health`. `{"status":"ok"}` means the website and database are answering. `{"status":"fail"}` or no answer means they are not.
 2. Check the status pages: status.vercel.com (website) and status.supabase.com (database). If one is down, wait; nothing on our side will fix it.
 3. If both are fine, open Vercel, the project, **Logs**, and read the newest red lines. Each error screen shows a short reference code; search the logs for it.
 4. If the problem began right after a change, **roll back**: Vercel, project, **Deployments**, find the last good deployment, **...**, **Promote to Production**. This takes about a minute and does not touch the database.
@@ -75,7 +75,7 @@ If production is the same Supabase project used for testing, run `supabase/scrip
 ## 8. Monitoring in place
 
 - **Errors:** Sentry (set `SENTRY_DSN`), with an alert rule emailing the foundation's address on any new error.
-- **Uptime:** an external monitor (for example UptimeRobot, free) checking `https://tacefoundation.org/api/health` every 5 minutes and emailing on failure. To test it, temporarily make the check fail (point the monitor at a wrong keyword) and confirm the email arrives.
+- **Uptime:** an external monitor (for example UptimeRobot, free) checking `https://www.tacefoundation.org/api/health` every 5 minutes and emailing on failure. To test it, temporarily make the check fail (point the monitor at a wrong keyword) and confirm the email arrives.
 - **Weekly digest:** every Monday 07:00 UTC the admins get an email with counts of open safeguarding concerns, flagged messages and waiting applications (called by a cPanel cron job, see `docs/CRON_SETUP.md`; needs `CRON_SECRET`).
 - **Daily:** orphaned application photos are cleaned up at 03:00 (cPanel server time, see `docs/CRON_SETUP.md`). If a job stops, search the Vercel logs for `[cron]`: no line means cPanel is not calling it.
 

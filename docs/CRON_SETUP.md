@@ -43,7 +43,7 @@ curl -s -f -m 60 -H "Authorization: Bearer YOUR_CRON_SECRET" "https://www.tacefo
 
 **Time zone.** cPanel runs jobs in **the server's time zone**, which is often UTC and not Lagos time. Lagos is one hour ahead of UTC, so on a UTC server "03:00" is 04:00 in Lagos and "07:00" is 08:00. Find the server's zone in cPanel (the **Server Information** panel, or the date shown on the Cron Jobs page) and change the hour if you want a different local time.
 
-**About the address.** The commands use `https://www.tacefoundation.org`, the address the site is served from. `curl` here does not follow redirects, so a different address (for example one that redirects) would fail. If the main address ever changes, change both commands.
+**About the address.** The commands use `https://www.tacefoundation.org`, the site's canonical address. `curl` here does not follow redirects, so keep `www` in the commands (the bare domain redirects to it).
 
 ## Test once (do this before relying on them)
 
