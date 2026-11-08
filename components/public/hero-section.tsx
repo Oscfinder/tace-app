@@ -66,7 +66,7 @@ export function HeroSection({
               Donate
             </Button>
           </div>
-          <div className="mt-14 flex gap-8">
+          <div className="mt-14 flex flex-wrap gap-x-8 gap-y-5">
             <div className="text-center">
               <div className="font-heading text-3xl font-extrabold text-white">
                 <AnimatedCounter value={childrenCount || 10} suffix="+" />

@@ -24,10 +24,10 @@ function Stat({
   const hasData = value > 0;
   return (
     <div
-      className="rounded px-6 py-10 text-center"
+      className="min-w-0 rounded px-3 py-8 text-center [container-type:inline-size] sm:px-5 sm:py-10"
       style={{ background: "rgba(255,255,255,0.04)" }}
     >
-      <div className="font-heading text-[52px] font-extrabold leading-none text-tace-yellow">
+      <div className="font-heading text-[clamp(20px,11cqw,52px)] font-extrabold leading-none text-tace-yellow">
         <AnimatedCounter
           value={value}
           prefix={prefix}

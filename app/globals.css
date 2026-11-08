@@ -151,6 +151,8 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Safety net: one stray wide element must never make the page scroll sideways. */
+    overflow-x: clip;
   }
   html {
     @apply font-sans;

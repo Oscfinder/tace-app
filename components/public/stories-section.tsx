@@ -79,7 +79,7 @@ export function StoriesSection({ stories }: { stories: FeaturedStory[] }) {
             View All Stories
           </Button>
         </div>
-        <div className="mt-12 grid gap-6 md:grid-cols-[2fr_1fr_1fr]">
+        <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
           {main ? (
             <StoryCard
               story={main}
